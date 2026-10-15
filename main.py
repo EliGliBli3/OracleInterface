@@ -7,24 +7,53 @@ ORACLE_HOST = "https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
 LOGIN_URL = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
 
 
-def get_field(page, label_text):
+def block_unneeded_resources(route):
+    if route.request.resource_type in {"image", "font"}:
+        route.abort()
+    else:
+        route.continue_()
 
-    # Exact label text match (avoids matching with fields with similar values)
+def get_field(page, label_text):
     label = page.locator("label").get_by_text(
         label_text, exact=True
-    )
+    ).first
 
     if label.count() == 0:
         raise ValueError(f"Field not found: {label_text}")
 
-    # All Work Order fields follow this pattern (<tr> { label, value })
-    row = label.first.locator("xpath=ancestor::tr[1]")
+    row = label.locator("xpath=ancestor::tr[1]")
     cells = row.locator(":scope > td")
 
     if cells.count() < 2:
         raise ValueError(f"Unable to find value cell for {label_text}")
 
-    return cells.nth(1).inner_text().strip()
+    value_cell = cells.nth(1)
+
+    inputs = value_cell.locator("input:not([type='hidden'])")
+    if inputs.count() > 0:
+        values = [
+            inputs.nth(i).input_value().strip()
+            for i in range(inputs.count())
+        ]
+        values = [value for value in values if value]
+        if values:
+            result = " ".join(values)
+        else:
+            result = ""
+    else:
+        result = ""
+
+    if not result:
+        result = value_cell.inner_text().strip()
+
+    if label_text == "Quantity":
+        unit = value_cell.locator("span.p_AFReadOnly")
+        if unit.count() > 0:
+            unit_text = unit.last.inner_text().strip()
+            if unit_text and unit_text not in result.split():
+                result = f"{result} {unit_text}".strip()
+
+    return "" if result is None else result
 
 def run_login():
     with sync_playwright() as p:
@@ -58,7 +87,7 @@ def fetch_wos(wo_ids: [str]):
 
         context = browser.new_context(
             storage_state=str(AUTH_STATE),
-            viewport={"width":1440,"height":900}
+            viewport={"width":720,"height":450}
         )
 
         try:
@@ -72,26 +101,52 @@ def fetch_wos(wo_ids: [str]):
                     f"workOrderNumber=WO-SAU-{wo_id}"
                 )
 
-                print(f"Pulling Work Order Data ({i}/{len(wo_ids)})")
+                print(f"\nPulling Work Order Data ({i+1}/{len(wo_ids)}) {'🟩' * (i+1)}{'⬛'*(len(wo_ids)-(i+1))}")
                 page.goto(
                     target_url,
                     wait_until="domcontentloaded",
                     timeout=60000
                 )
 
+                #page.route("**/*", block_unneeded_resources)
+
                 if page.get_by_text("Type", exact=True).count() == 0:
-                    # Expand details so that they can be read
-                    page.get_by_role("button", name="Expand Details").click()
+                    def attempt_expand_details():
+                        try:
+                            # Expand details so that they can be read
+                            page.get_by_role("button", name="Expand Details").click()
 
-                    expect(page.get_by_text("Type", exact=True)).to_be_visible()
+                            expect(page.get_by_text("Type", exact=True)).to_be_visible(timeout=500)
+                            return True
+                        except Exception:
+                            return False
 
-                print(f"\nWO-SAU-{wo_id}:"
-                      f"\n\tTYPE: {get_field(page, "Type")}"
-                      f"\n\tITEM: {get_field(page, "Item")}"
-                      f"\n\tITEM DESCRIPTION: {get_field(page, "Item Description")}"
-                      f"\n\tQUANTITY: {get_field(page, "Quantity")}"
-                      f"\n\tSTATUS: {get_field(page, "Status")}"
-                      f"\n\tPRIORITY: {get_field(page, "Priority")}"
+                    timeout_attempts = 5
+                    passed = False
+
+                    for _ in range(timeout_attempts):
+                        if attempt_expand_details():
+                            passed = True
+                            break
+                    if not passed:
+                        raise TimeoutError(f"Could not expand details (Timed out after {timeout_attempts} attempts.)")
+
+
+
+                _type = get_field(page, "Type")
+                item = get_field(page, "Item")
+                priority = get_field(page, "Priority")
+                item_desc = get_field(page, "Item Description")
+                qty = get_field(page, "Quantity")
+                status = get_field(page, "Status")
+
+                print(f"WO-SAU-{wo_id}:"
+                      f"\n\tTYPE: {_type}"
+                      f"\n\tITEM: {item}"
+                      f"\n\tITEM DESCRIPTION: {item_desc if item_desc != "" else "N/A"}"
+                      f"\n\tQUANTITY: {qty}"
+                      f"\n\tSTATUS: {status}"
+                      f"\n\tPRIORITY: {priority if priority != "" else "N/A"}"
                   )
 
         finally:
@@ -102,4 +157,14 @@ if __name__ == '__main__':
     run_login()
 
     # Trial fetch
-    fetch_wos(["125433", "112830", "119932", "121052"])
+    fetch_wos([
+        "125433",
+        "112830",
+        "119932",
+        "121052",
+        "133828",
+        "130664",
+        "147040",
+        "142653",
+        "139575",
+    ])
