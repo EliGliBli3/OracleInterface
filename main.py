@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from playwright.sync_api import sync_playwright, expect
 from pathlib import Path
 
@@ -6,6 +8,8 @@ PROFILE_DIR = "./oracle_cookies"
 ORACLE_HOST = "https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
 LOGIN_URL = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
 
+def is_null_or_whitespace(value: str):
+    return value is None or value.strip() == ""
 
 def block_unneeded_resources(route):
     if route.request.resource_type in {"image", "font"}:
@@ -19,41 +23,35 @@ def get_field(page, label_text):
     ).first
 
     if label.count() == 0:
-        raise ValueError(f"Field not found: {label_text}")
+        return "N/A"
 
     row = label.locator("xpath=ancestor::tr[1]")
+    # Generically 2 cells: (0) Label, (1) Value
     cells = row.locator(":scope > td")
 
-    if cells.count() < 2:
-        raise ValueError(f"Unable to find value cell for {label_text}")
-
     value_cell = cells.nth(1)
-
     inputs = value_cell.locator("input:not([type='hidden'])")
+
+    result = None
+
+    # Some values have multiple inputs (e.g. Quantity has qty + UoM)
     if inputs.count() > 0:
+        # Dumps playwright locator list ('inputs') into a value array
         values = [
             inputs.nth(i).input_value().strip()
             for i in range(inputs.count())
         ]
+        # Remove null values
         values = [value for value in values if value]
-        if values:
+
+        # Would only return 'false' if *every* value was null, and was culled in the previous operation.
+        if values and len(values) > 0:
             result = " ".join(values)
-        else:
-            result = ""
-    else:
-        result = ""
 
     if not result:
         result = value_cell.inner_text().strip()
 
-    if label_text == "Quantity":
-        unit = value_cell.locator("span.p_AFReadOnly")
-        if unit.count() > 0:
-            unit_text = unit.last.inner_text().strip()
-            if unit_text and unit_text not in result.split():
-                result = f"{result} {unit_text}".strip()
-
-    return "" if result is None else result
+    return "N/A" if is_null_or_whitespace(result) else result
 
 def run_login():
     with sync_playwright() as p:
@@ -83,7 +81,7 @@ def fetch_wos(wo_ids: [str]):
         raise RuntimeError("run_login() was not fully executed before attempting to fetch.")
 
     with (sync_playwright() as p):
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
 
         context = browser.new_context(
             storage_state=str(AUTH_STATE),
@@ -137,24 +135,28 @@ def fetch_wos(wo_ids: [str]):
                 item = get_field(page, "Item")
                 priority = get_field(page, "Priority")
                 item_desc = get_field(page, "Item Description")
-                qty = get_field(page, "Quantity")
+                qty = get_field(page, "Quantity").replace("EA", "").strip()
                 status = get_field(page, "Status")
 
                 print(f"WO-SAU-{wo_id}:"
                       f"\n\tTYPE: {_type}"
                       f"\n\tITEM: {item}"
-                      f"\n\tITEM DESCRIPTION: {item_desc if item_desc != "" else "N/A"}"
+                      f"\n\tITEM DESCRIPTION: {item_desc}"
                       f"\n\tQUANTITY: {qty}"
                       f"\n\tSTATUS: {status}"
-                      f"\n\tPRIORITY: {priority if priority != "" else "N/A"}"
+                      f"\n\tPRIORITY: {priority}"
                   )
 
         finally:
             context.close()
             browser.close()
 
+            print("\n-----\nSuccessfully fetched all orders.\n-----\n")
+
 if __name__ == '__main__':
     run_login()
+
+    start_time = datetime.now()
 
     # Trial fetch
     fetch_wos([
@@ -167,4 +169,9 @@ if __name__ == '__main__':
         "147040",
         "142653",
         "139575",
+        "140222",
     ])
+
+    end_time = datetime.now()
+
+    print (f"Finished fetching in {(end_time-start_time).total_seconds()} seconds.")
