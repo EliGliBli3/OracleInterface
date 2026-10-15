@@ -1,4 +1,4 @@
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 from pathlib import Path
 
 AUTH_STATE = Path("./oracle_auth_state.json")
@@ -7,11 +7,24 @@ ORACLE_HOST = "https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
 LOGIN_URL = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
 
 
-def block_unneeded_resources(route):
-    if route.request.resource_type in {"image", "stylesheet", "font"}:
-        route.abort()
-    else:
-        route.continue_()
+def get_field(page, label_text):
+
+    # Exact label text match (avoids matching with fields with similar values)
+    label = page.locator("label").get_by_text(
+        label_text, exact=True
+    )
+
+    if label.count() == 0:
+        raise ValueError(f"Field not found: {label_text}")
+
+    # All Work Order fields follow this pattern (<tr> { label, value })
+    row = label.first.locator("xpath=ancestor::tr[1]")
+    cells = row.locator(":scope > td")
+
+    if cells.count() < 2:
+        raise ValueError(f"Unable to find value cell for {label_text}")
+
+    return cells.nth(1).inner_text().strip()
 
 def run_login():
     with sync_playwright() as p:
@@ -36,7 +49,7 @@ def run_login():
 
         context.close()
 
-def fetch_wo(wo_id):
+def fetch_wos(wo_ids: [str]):
     if not AUTH_STATE.exists():
         raise RuntimeError("run_login() was not fully executed before attempting to fetch.")
 
@@ -51,28 +64,35 @@ def fetch_wo(wo_id):
         try:
             page = context.new_page()
 
-            # OPTIMIZATION: Blocks images, fonts, etc. downloads (BROKEN: 'list' has no attribute 'route')
-            # ENABLE WHEN WORKFLOW IS CONFIRMED TO WORK
-            # page.route("**/*", block_unneeded_resources)
+            for i, wo_id in enumerate(wo_ids):
+                target_url = (
+                    f"{ORACLE_HOST}/fscmUI/faces/deeplink"
+                    f"?objType=WIE_WORK_ORDER&action=EDIT"
+                    f"&objKey=organizationCode=231SAU;"
+                    f"workOrderNumber=WO-SAU-{wo_id}"
+                )
 
-            target_url = (
-                f"{ORACLE_HOST}/fscmUI/faces/deeplink"
-                f"?objType=WIE_WORK_ORDER&action=EDIT"
-                f"&objKey=organizationCode=231SAU;"
-                f"workOrderNumber=WO-SAU-{wo_id}"
-            )
+                print(f"Pulling Work Order Data ({i}/{len(wo_ids)})")
+                page.goto(
+                    target_url,
+                    wait_until="domcontentloaded",
+                    timeout=60000
+                )
 
-            print("Navigating to deeplink...")
-            page.goto(
-                target_url,
-                wait_until="domcontentloaded",
-                timeout=60000
-            )
+                if page.get_by_text("Type", exact=True).count() == 0:
+                    # Expand details so that they can be read
+                    page.get_by_role("button", name="Expand Details").click()
 
-            msg = page.get_by_role("textbox", name="Description").text_content()
-            print(msg)
+                    expect(page.get_by_text("Type", exact=True)).to_be_visible()
 
-            #page.pause()
+                print(f"\nWO-SAU-{wo_id}:"
+                      f"\n\tTYPE: {get_field(page, "Type")}"
+                      f"\n\tITEM: {get_field(page, "Item")}"
+                      f"\n\tITEM DESCRIPTION: {get_field(page, "Item Description")}"
+                      f"\n\tQUANTITY: {get_field(page, "Quantity")}"
+                      f"\n\tSTATUS: {get_field(page, "Status")}"
+                      f"\n\tPRIORITY: {get_field(page, "Priority")}"
+                  )
 
         finally:
             context.close()
@@ -82,4 +102,4 @@ if __name__ == '__main__':
     run_login()
 
     # Trial fetch
-    fetch_wo("3643")
+    fetch_wos(["125433", "112830", "119932", "121052"])
