@@ -2,6 +2,7 @@ from datetime import datetime
 
 from playwright.sync_api import sync_playwright, expect
 from pathlib import Path
+from enum import Enum
 
 AUTH_STATE = Path("./oracle_auth_state.json")
 PROFILE_DIR = "./oracle_cookies"
@@ -10,6 +11,26 @@ LOGIN_URL = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
 
 def is_null_or_whitespace(value: str):
     return value is None or value.strip() == ""
+
+class DeeplinkObjType(Enum):
+    WIE_WORK_ORDER = "WIE_WORK_ORDER"
+    QUALITY_ISSUES = "ISSUES"
+
+class DeeplinkAction(Enum):
+    EDIT = "EDIT"
+    VIEW = "VIEW"
+
+
+def get_deeplink(org_code: str, _type: DeeplinkObjType, action: DeeplinkAction, params: dict):
+    url = (
+        f"{ORACLE_HOST}/fscmUI/faces/deeplink"
+        f"?objType={_type.value}&action={action.value}"
+        f"&objKey=organizationCode={org_code}"
+    )
+    for param in params:
+        url += f";{param}={params.get(param)}"
+
+    return url
 
 def block_unneeded_resources(route):
     if route.request.resource_type in {"image", "font"}:
@@ -92,11 +113,13 @@ def fetch_wos(wo_ids: [str]):
             page = context.new_page()
 
             for i, wo_id in enumerate(wo_ids):
-                target_url = (
-                    f"{ORACLE_HOST}/fscmUI/faces/deeplink"
-                    f"?objType=WIE_WORK_ORDER&action=EDIT"
-                    f"&objKey=organizationCode=231SAU;"
-                    f"workOrderNumber=WO-SAU-{wo_id}"
+                target_url = get_deeplink(
+                    "231SAU",
+                    DeeplinkObjType.WIE_WORK_ORDER,
+                    DeeplinkAction.EDIT,
+                    {
+                        "workOrderNumber": f"WO-SAU-{wo_id}"
+                    }
                 )
 
                 print(f"\nPulling Work Order Data ({i+1}/{len(wo_ids)}) {'🟩' * (i+1)}{'⬛'*(len(wo_ids)-(i+1))}")
