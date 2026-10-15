@@ -1,23 +1,21 @@
+from asyncio import timeout
 from pathlib import Path
-from enum import Enum
-from playwright.sync_api import sync_playwright, expect
+
+import playwright
+from playwright.sync_api import sync_playwright, Playwright
 
 import utils
+import Oracle.web as o_web
+import Oracle.interface as o_api
 
 AUTH_STATE = Path("./oracle_auth_state.json")
 PROFILE_DIR = "./oracle_cookies"
 ORACLE_HOST = "https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
 LOGIN_URL = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
 
-class DeeplinkObjType(Enum):
-    WIE_WORK_ORDER = "WIE_WORK_ORDER"
-    QUALITY_ISSUES = "ISSUES"
+engine: o_api.Engine = None
 
-class DeeplinkAction(Enum):
-    EDIT = "EDIT"
-    VIEW = "VIEW"
-
-def get_deeplink(org_code: str, _type: DeeplinkObjType, action: DeeplinkAction, params: dict):
+def get_deeplink(org_code: str, _type: o_web.DeeplinkObjType, action: o_web.DeeplinkAction, params: dict):
     url = (
         f"{ORACLE_HOST}/fscmUI/faces/deeplink"
         f"?objType={_type.value}&action={action.value}"
@@ -70,6 +68,14 @@ def get_field(page, label_text):
 
     return "N/A" if utils.is_null_or_whitespace(result) else result
 
+def validate_api():
+    if engine is None:
+        raise RuntimeError("No engine was initialized. Call start_engine() before using the api.")
+    if engine.page is None:
+        print("Engine page was unexpectedly invalidated. Revalidating...")
+        engine.page = engine.context.new_page()
+
+
 def prompt_login():
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
@@ -93,81 +99,84 @@ def prompt_login():
 
         context.close()
 
-def fetch_wos(wo_ids: [str]):
+def start_engine():
+    global engine
+
     if not AUTH_STATE.exists():
-        raise RuntimeError("run_login() was not fully executed before attempting to fetch.")
+        raise RuntimeError("run_login() was not fully executed before engine start.")
 
-    with (sync_playwright() as p):
-        browser = p.chromium.launch(headless=True)
+    pw: Playwright = sync_playwright().start()
+    browser = pw.chromium.launch(headless=True)
+    context = browser.new_context(
+        storage_state=str(AUTH_STATE),
+        viewport={"width": 720, "height": 450}
+    )
+    engine = o_api.Engine(browser, context, pw)
 
-        context = browser.new_context(
-            storage_state=str(AUTH_STATE),
-            viewport={"width":720,"height":450}
+    engine.page = engine.context.new_page()
+
+def dispose():
+    if engine is not None:
+        engine.context.close()
+        engine.browser.close()
+        engine.pw.stop()
+
+def get_work_order(wo_id: str):
+    validate_api()
+
+    with engine.page as p:
+        target_url = get_deeplink(
+            "231SAU",
+            o_web.DeeplinkObjType.WIE_WORK_ORDER,
+            o_web.DeeplinkAction.EDIT,
+            {
+                "workOrderNumber": f"WO-SAU-{wo_id}"
+            }
         )
 
-        try:
-            page = context.new_page()
+        print(f"\nPulling Work Order data from WO-SAU-{wo_id} : {target_url}")
+        p.goto(
+            target_url,
+            wait_until="domcontentloaded",
+            timeout=60000
+        )
 
-            for i, wo_id in enumerate(wo_ids):
-                target_url = get_deeplink(
-                    "231SAU",
-                    DeeplinkObjType.WIE_WORK_ORDER,
-                    DeeplinkAction.EDIT,
-                    {
-                        "workOrderNumber": f"WO-SAU-{wo_id}"
-                    }
-                )
+        if p.get_by_text("Type", exact=True).count() == 0:
+            def attempt_expand_details():
+                try:
+                    # Expand details so that they can be read
+                    p.get_by_role("button", name="Expand Details").click()
 
-                print(f"\nPulling Work Order Data ({i+1}/{len(wo_ids)}) {'🟩' * (i+1)}{'⬛'*(len(wo_ids)-(i+1))}")
-                page.goto(
-                    target_url,
-                    wait_until="domcontentloaded",
-                    timeout=60000
-                )
 
-                #page.route("**/*", block_unneeded_resources)
+                    playwright.sync_api.expect(p.get_by_text("Type", exact=True)).to_be_visible(timeout=500)
+                    return True
+                except Exception:
+                    return False
 
-                if page.get_by_text("Type", exact=True).count() == 0:
-                    def attempt_expand_details():
-                        try:
-                            # Expand details so that they can be read
-                            page.get_by_role("button", name="Expand Details").click()
+            timeout_attempts = 5
+            passed = False
 
-                            expect(page.get_by_text("Type", exact=True)).to_be_visible(timeout=500)
-                            return True
-                        except Exception:
-                            return False
-
-                    timeout_attempts = 5
-                    passed = False
-
-                    for _ in range(timeout_attempts):
-                        if attempt_expand_details():
-                            passed = True
-                            break
-                    if not passed:
-                        raise TimeoutError(f"Could not expand details (Timed out after {timeout_attempts} attempts.)")
+            for _ in range(timeout_attempts):
+                if attempt_expand_details():
+                    passed = True
+                    break
+            if not passed:
+                raise TimeoutError(f"Could not expand details (Timed out after {timeout_attempts} attempts.)")
 
 
 
-                _type = get_field(page, "Type")
-                item = get_field(page, "Item")
-                priority = get_field(page, "Priority")
-                item_desc = get_field(page, "Item Description")
-                qty = get_field(page, "Quantity").replace("EA", "").strip()
-                status = get_field(page, "Status")
+        _type = get_field(p, "Type")
+        item = get_field(p, "Item")
+        priority = get_field(p, "Priority")
+        item_desc = get_field(p, "Item Description")
+        qty = get_field(p, "Quantity").replace("EA", "").strip()
+        status = get_field(p, "Status")
 
-                print(f"WO-SAU-{wo_id}:"
-                      f"\n\tTYPE: {_type}"
-                      f"\n\tITEM: {item}"
-                      f"\n\tITEM DESCRIPTION: {item_desc}"
-                      f"\n\tQUANTITY: {qty}"
-                      f"\n\tSTATUS: {status}"
-                      f"\n\tPRIORITY: {priority}"
-                  )
-
-        finally:
-            context.close()
-            browser.close()
-
-            print("\n-----\nSuccessfully fetched all orders.\n-----\n")
+        print(f"WO-SAU-{wo_id}:"
+              f"\n\tTYPE: {_type}"
+              f"\n\tITEM: {item}"
+              f"\n\tITEM DESCRIPTION: {item_desc}"
+              f"\n\tQUANTITY: {qty}"
+              f"\n\tSTATUS: {status}"
+              f"\n\tPRIORITY: {priority}"
+          )
