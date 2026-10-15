@@ -164,7 +164,6 @@ def get_work_order(wo_id: str):
                 raise TimeoutError(f"Could not expand details (Timed out after {timeout_attempts} attempts.)")
 
 
-
         _type = get_field(p, "Type")
         item = get_field(p, "Item")
         priority = get_field(p, "Priority")

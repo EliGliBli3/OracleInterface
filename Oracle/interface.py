@@ -11,4 +11,4 @@ class Engine:
         self.browser: playwright.sync_api.Browser = browser
         self.context: playwright.sync_api.BrowserContext = context
         self.pw: Playwright = pw
-        self.page: playwright.sync_api.Page = None
+        self.pages: [playwright.sync_api.Page] = []
