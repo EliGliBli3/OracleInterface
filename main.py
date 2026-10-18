@@ -1,3 +1,4 @@
+import os
 import sys, atexit, signal
 
 from Engines import oracle_engine as fscm
@@ -25,3 +26,8 @@ if __name__ == '__main__':
     fscm.start_engine()
 
     log("Oracle Interface Launched!", LogLevel.SUCCESS)
+    os.system('cls')
+
+
+
+    input()
