@@ -9,6 +9,7 @@ import Oracle.nav as nav
 from Oracle.web import WorkOrder
 
 from main import ORACLE_HOST, PROFILE_DIR, AUTH_STATE, LOGIN_URL
+from logger import *
 
 engine: o_api.Engine = None
 
@@ -56,16 +57,19 @@ def get_label(page, label_text):
 
 def validate_api():
     if engine is None:
-        raise RuntimeError("No engine was initialized. Call start_engine() before using the api.")
+        err_break("No engine was initialized. Call start_engine() before using the api.")
     if engine.pages is None:
-        print("Engine pages were unexpectedly invalidated. Revalidating...")
+        log("Engine pages were unexpectedly invalidated.", LogLevel.WARN)
+        log("Revalidating engine page collection...", LogLevel.PENDING)
         engine.pages = []
     if len(engine.pages) == 0:
-        print("Revalidating main page...")
+        log("Revalidating main page...", LogLevel.PENDING)
         engine.pages.append(engine.context.new_page())
 
 
 def prompt_login():
+    log("Prompting user login...", LogLevel.PENDING)
+
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
@@ -79,29 +83,31 @@ def prompt_login():
         page.wait_for_url("**/fscmUI/faces/*", timeout=120000)
 
         if ORACLE_HOST not in page.url:
-            raise RuntimeError(
-                f"Oracle is not loaded. Current URL: {page.url}"
-            )
+            err_break(f"Oracle is not loaded. Current URL: {page.url}")
 
         context.storage_state(path=str(AUTH_STATE))
-        print("Saved playwright authentication state.")
+        log("User login complete.", LogLevel.SUCCESS)
 
         context.close()
 
 def start_engine():
     global engine
 
+    log("Starting browser engine...", LogLevel.PENDING)
     if not AUTH_STATE.exists():
-        raise RuntimeError("run_login() was not fully executed before engine start.")
+        err_break("run_login() was not fully executed before engine start.")
 
     pw: Playwright = sync_playwright().start()
+    log("Playwright engine started.")
     browser = pw.chromium.launch(headless=False)
+    log("Browser launched.")
     context = browser.new_context(
         storage_state=str(AUTH_STATE),
         viewport={"width": 720, "height": 450}
     )
     engine = o_api.Engine(browser, context, pw)
     engine.pages = [engine.context.new_page()]
+    log("Engine initialized.", LogLevel.SUCCESS)
 
 def dispose():
     if engine is not None:
