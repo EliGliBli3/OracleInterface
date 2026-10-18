@@ -2,6 +2,9 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+import main
+
+
 class LogLevel(Enum):
     SUCCESS = '🟢'
     PENDING = '🔵'
@@ -11,14 +14,13 @@ class LogLevel(Enum):
 
 def log(msg, level: LogLevel = LogLevel.NONE):
     val = str(msg)
-    time = datetime.now()
 
     # For the log (uses ':')
-    time_log = time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+    time_log = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
     # FOr the log's file name (can't use ':')
-    time_file = time.strftime("%Y-%m-%d %H-%M-%S.%f")[:-7]
+    time_file = main.program_start.strftime("%Y-%m-%d %H-%M-%S.%f")[:-7]
 
-    result = f"{level.value} ({time}) {val}"
+    result = f"{level.value} ({time_log}) {val}"
     print(result)
 
     log_path = Path(f"logs/{time_file}.log.txt")
@@ -26,6 +28,6 @@ def log(msg, level: LogLevel = LogLevel.NONE):
     with open(log_path, "a") as file:
         file.write(result+"\n")
 
-def break_error(msg):
+def err_break(msg):
     log(msg, LogLevel.ERROR)
     raise RuntimeError(msg)
