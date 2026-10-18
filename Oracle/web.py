@@ -1,4 +1,6 @@
 from enum import Enum
+from turtledemo.penrose import start
+
 
 class DeeplinkObjType(Enum):
     WIE_WORK_ORDER = "WIE_WORK_ORDER"
@@ -10,18 +12,24 @@ class DeeplinkAction(Enum):
 
 class WorkOrder:
     class Status(Enum):
-        CANCELED = 0
-        CLOSED = 1
-        COMPLETE_NO_CHARGE = 2
-        COMPLETED = 3
-        COMPLETED_AND_REVIEWED = 4
-        RELEASED = 5
-        UNRELEASED = 6
+        CANCELED = "Canceled"
+        CLOSED = "Closed"
+        COMPLETE_NO_CHARGE = "Complete No-Charge"
+        COMPLETED = "Completed"
+        COMPLETED_AND_REVIEWED = "Completed and Reviewed"
+        RELEASED = "Released"
+        UNRELEASED = "Unreleased"
+        NONE = "N/A"
+
+        def get(web_status: str):
+            return [s.name for s in list(WorkOrder.Status) if s.value == web_status][0]
+
     class Type(Enum):
         STANDARD = 0
         REWORK = 1
         NONSTANDARD = 2
         TRANSFORM = 3
+
 
     def __init__(self,
                  number: str,
@@ -29,19 +37,15 @@ class WorkOrder:
                  item: str,
                  quantity: int,
                  status: Status,
-                 order_description: str="",
-                 priority: int = 0,
-                 item_description: str = "",
-                 start_date: int = 0,
-                 completion_date: int = 0,
+                 description: str,
+                 start_date: str,
+                 completion_date: str
                  ):
-        order_name: str = number
-        order_type: WorkOrder.Type = _type
-        item: str = item
-        item_description: str = item_description
-        quantity: int = quantity
-        order_status: WorkOrder.Status = status
-        start_date: int = start_date
-        completion_date: int = completion_date
-        order_description: str = order_description
-        order_priority: int = priority
+        self.number = number
+        self.type = _type
+        self.item = item
+        self.quantity = quantity
+        self.status = status
+        self.description = description
+        self.start_date = start_date
+        self.completion_date = completion_date

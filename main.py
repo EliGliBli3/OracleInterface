@@ -1,16 +1,23 @@
 import sys, atexit, signal
-from datetime import datetime
-import oracle_engine as fscm
+import time
+
+from Engines import oracle_engine as fscm
+from pathlib import Path
+
+AUTH_STATE = Path("../Oracle/auth/oracle_auth_state.json")
+PROFILE_DIR = "../Oracle/auth/oracle_cookies"
+ORACLE_HOST = "https://fa-eovh-test-saasfaprod1.fa.ocs.oraclecloud.com" #"https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
+LOGIN_URL = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
 
 def handle_signal(signum, frame):
     sys.exit(128 + signum)
 
-atexit.register(fscm.dispose)
-signal.signal(signal.SIGINT, handle_signal)
-signal.signal(signal.SIGTERM, handle_signal)
+
 
 if __name__ == '__main__':
+    atexit.register(fscm.dispose)
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
     fscm.prompt_login()
     fscm.start_engine()
-
-    fscm.get_work_order("140128")

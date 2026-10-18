@@ -1,30 +1,16 @@
-from asyncio import timeout
-from pathlib import Path
-
 import playwright
 from playwright.sync_api import sync_playwright, Playwright
 
+import Oracle.web
 import utils
 import Oracle.web as o_web
 import Oracle.interface as o_api
+import Oracle.nav as nav
+from Oracle.web import WorkOrder
 
-AUTH_STATE = Path("./oracle_auth_state.json")
-PROFILE_DIR = "./oracle_cookies"
-ORACLE_HOST = "https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
-LOGIN_URL = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
+from main import ORACLE_HOST, PROFILE_DIR, AUTH_STATE, LOGIN_URL
 
 engine: o_api.Engine = None
-
-def get_deeplink(org_code: str, _type: o_web.DeeplinkObjType, action: o_web.DeeplinkAction, params: dict):
-    url = (
-        f"{ORACLE_HOST}/fscmUI/faces/deeplink"
-        f"?objType={_type.value}&action={action.value}"
-        f"&objKey=organizationCode={org_code}"
-    )
-    for param in params:
-        url += f";{param}={params.get(param)}"
-
-    return url
 
 def block_unneeded_resources(route):
     if route.request.resource_type in {"image", "font"}:
@@ -32,7 +18,7 @@ def block_unneeded_resources(route):
     else:
         route.continue_()
 
-def get_field(page, label_text):
+def get_label(page, label_text):
     label = page.locator("label").get_by_text(
         label_text, exact=True
     ).first
@@ -71,9 +57,12 @@ def get_field(page, label_text):
 def validate_api():
     if engine is None:
         raise RuntimeError("No engine was initialized. Call start_engine() before using the api.")
-    if engine.page is None:
-        print("Engine page was unexpectedly invalidated. Revalidating...")
-        engine.page = engine.context.new_page()
+    if engine.pages is None:
+        print("Engine pages were unexpectedly invalidated. Revalidating...")
+        engine.pages = []
+    if len(engine.pages) == 0:
+        print("Revalidating main page...")
+        engine.pages.append(engine.context.new_page())
 
 
 def prompt_login():
@@ -106,14 +95,13 @@ def start_engine():
         raise RuntimeError("run_login() was not fully executed before engine start.")
 
     pw: Playwright = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
+    browser = pw.chromium.launch(headless=False)
     context = browser.new_context(
         storage_state=str(AUTH_STATE),
         viewport={"width": 720, "height": 450}
     )
     engine = o_api.Engine(browser, context, pw)
-
-    engine.page = engine.context.new_page()
+    engine.pages = [engine.context.new_page()]
 
 def dispose():
     if engine is not None:
@@ -124,33 +112,23 @@ def dispose():
 def get_work_order(wo_id: str):
     validate_api()
 
-    with engine.page as p:
-        target_url = get_deeplink(
-            "231SAU",
-            o_web.DeeplinkObjType.WIE_WORK_ORDER,
-            o_web.DeeplinkAction.EDIT,
-            {
-                "workOrderNumber": f"WO-SAU-{wo_id}"
-            }
-        )
-
-        print(f"\nPulling Work Order data from WO-SAU-{wo_id} : {target_url}")
-        p.goto(
-            target_url,
-            wait_until="domcontentloaded",
-            timeout=60000
-        )
+    p: playwright.sync_api.Page
+    with nav.new_tab(engine) as p:
+        nav.goto_work_order(p, wo_id)
 
         if p.get_by_text("Type", exact=True).count() == 0:
             def attempt_expand_details():
+
+                if p.get_by_role("button", name="Collapse Details",exact=True).count() > 0:
+                    print("Found evidence of expansion... moving forward")
+                    return True
                 try:
                     # Expand details so that they can be read
                     p.get_by_role("button", name="Expand Details").click()
 
-
-                    playwright.sync_api.expect(p.get_by_text("Type", exact=True)).to_be_visible(timeout=500)
                     return True
-                except Exception:
+                except Exception as e:
+                    print(e)
                     return False
 
             timeout_attempts = 5
@@ -163,19 +141,18 @@ def get_work_order(wo_id: str):
             if not passed:
                 raise TimeoutError(f"Could not expand details (Timed out after {timeout_attempts} attempts.)")
 
+        _type = get_label(p, "Type")
+        item = get_label(p, "Item")
+        status = p.get_by_role('combobox', name="Status").input_value()
+        description = get_label(p, "Description")
+        qty = get_label(p, "Quantity").replace("EA", "").strip()
+        start_date = get_label(p, "Start Date")
+        end_date = get_label(p, "Completion Date")
 
-        _type = get_field(p, "Type")
-        item = get_field(p, "Item")
-        priority = get_field(p, "Priority")
-        item_desc = get_field(p, "Item Description")
-        qty = get_field(p, "Quantity").replace("EA", "").strip()
-        status = get_field(p, "Status")
+        print(f"Fetching {status}"
+              f"\n\tSample: CANCELED = {WorkOrder.Status.get("Canceled")}")
+        return o_web.WorkOrder(wo_id, _type, item, int(qty), WorkOrder.Status.get(status), description, start_date, end_date)
 
-        print(f"WO-SAU-{wo_id}:"
-              f"\n\tTYPE: {_type}"
-              f"\n\tITEM: {item}"
-              f"\n\tITEM DESCRIPTION: {item_desc}"
-              f"\n\tQUANTITY: {qty}"
-              f"\n\tSTATUS: {status}"
-              f"\n\tPRIORITY: {priority}"
-          )
+
+def open_new():
+    return nav.new_tab(engine)
