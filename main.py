@@ -1,8 +1,8 @@
 import sys, atexit, signal
-import time
 
 from Engines import oracle_engine as fscm
 from pathlib import Path
+from logger import *
 
 AUTH_STATE = Path("../Oracle/auth/oracle_auth_state.json")
 PROFILE_DIR = "../Oracle/auth/oracle_cookies"
