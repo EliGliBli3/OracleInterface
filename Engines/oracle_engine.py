@@ -19,13 +19,16 @@ def block_unneeded_resources(route):
     else:
         route.continue_()
 
-def get_label(page, label_text):
+def get_label(page, label_text, return_none: bool = False):
     label = page.locator("label").get_by_text(
         label_text, exact=True
     ).first
 
+    def return_na():
+        return None if return_none else "N/A"
+
     if label.count() == 0:
-        return "N/A"
+        return return_na()
 
     row = label.locator("xpath=ancestor::tr[1]")
     # Generically 2 cells: (0) Label, (1) Value
@@ -53,7 +56,7 @@ def get_label(page, label_text):
     if not result:
         result = value_cell.inner_text().strip()
 
-    return "N/A" if utils.is_null_or_whitespace(result) else result
+    return return_na() if utils.is_null_or_whitespace(result) else result
 
 def validate_api():
     if engine is None:
@@ -147,13 +150,20 @@ def get_work_order(wo_id: str):
             if not passed:
                 raise TimeoutError(f"Could not expand details (Timed out after {timeout_attempts} attempts.)")
 
-        _type = get_label(p, "Type")
+        _type = get_label(p, "Type", return_none=True)
         item = get_label(p, "Item")
         status = p.get_by_role('combobox', name="Status").input_value()
-        description = get_label(p, "Description")
+        description = p.get_by_role('textbox', name="Description").input_value()
         qty = get_label(p, "Quantity").replace("EA", "").strip()
         start_date = get_label(p, "Start Date")
         end_date = get_label(p, "Completion Date")
+
+        _timeout = datetime.now()
+        while _type is None:
+            if (datetime.now() - _timeout).total_seconds() > 5:
+                err_break(f"Timeout! Couldn't fetch type for WO-SAU-{wo_id}. Maybe the details pane didn't expand?")
+
+            _type = get_label(p, "Type", return_none=True)
 
         print(f"Fetching {status}"
               f"\n\tSample: CANCELED = {WorkOrder.Status.get("Canceled")}")
