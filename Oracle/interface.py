@@ -1,5 +1,6 @@
 import playwright.sync_api
 from playwright.sync_api import Playwright
+from web import *
 
 
 class Engine:
@@ -11,4 +12,4 @@ class Engine:
         self.browser: playwright.sync_api.Browser = browser
         self.context: playwright.sync_api.BrowserContext = context
         self.pw: Playwright = pw
-        self.pages: [playwright.sync_api.Page] = []
+        self.pages: list[playwright.sync_api.Page] = []
