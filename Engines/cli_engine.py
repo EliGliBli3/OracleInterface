@@ -1,7 +1,6 @@
 import os
 import sys
 from collections.abc import Callable
-from lib2to3.fixes.fix_input import context
 
 from logger import *
 import Engines.oracle_engine as fscm
@@ -51,7 +50,7 @@ def go_to_page(page: ButtonPage | InputPage):
         try:
             _input = input(page.msg + " > ")
 
-            ctx: [] = page.context
+            ctx: [] = [x for x in page.context]
             ctx.append(_input)
 
             page.action(ctx)

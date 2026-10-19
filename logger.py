@@ -25,7 +25,7 @@ def log(msg, level: LogLevel = LogLevel.NONE):
 
     log_path = Path(f"logs/{time_file}.log.txt")
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a") as file:
+    with open(log_path, "a", encoding="utf-8") as file:
         file.write(result+"\n")
 
 def err_break(msg):
