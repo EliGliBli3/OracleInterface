@@ -70,7 +70,7 @@ class WorkOrder:
                 self.part: str
                 self.supplier: str
                 self.generate_shipment: bool
-                self.lead_time: int
+                self.lead_time: int # in hours
 
         def __init__(self):
             self.op: int

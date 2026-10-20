@@ -1,10 +1,11 @@
 from asyncio import timeout
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 import Oracle.web as web, Oracle.interface as interface, main
 from Oracle.interface import Engine
 from Oracle.web import WorkOrder, OrgCode
 from enum import Enum
+import re
 
 from logger import *
 
@@ -69,7 +70,7 @@ def goto_work_order(page: Page, job_num: str):
 def goto_quality_issue(engine: Engine, nc_num: str):
     page_type = SavedPageType.QUALITY_ISSUES_SEARCH
 
-    page: Page = get_saved_page(page_type)
+    page: Page | None = get_saved_page(page_type)
     if page is None:
         log(f"No tab found for {page_type.name}. Navigating...", LogLevel.PENDING)
         page = new_tab(engine)
@@ -115,9 +116,19 @@ def goto_quality_issue(engine: Engine, nc_num: str):
     search_bar_fast.click()
 
     search_bar_fast.fill(nc_num)
+    search_bar_fast.press("Enter", delay=100)
 
+    try:
+        page.wait_for_load_state("networkidle")
+        expect(page.get_by_role("link", name=re.compile(r"^NC"))).to_be_visible(timeout=3000) # Waits for an NC to be visible
+        nc_link = page.get_by_role("link", name=f"NC{nc_num}", exact=True)
 
+        if nc_link.count() == 0:
+            nc_link = page.get_by_role("link", name=f"NC").first
 
+        nc_link.click()
+    except Exception as e:
+        log(f"Could not find any NCs for input {nc_num}\n{e}", LogLevel.WARN)
 
 
 def new_tab(engine: interface.Engine):

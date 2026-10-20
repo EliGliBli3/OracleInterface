@@ -53,11 +53,10 @@ if __name__ == '__main__':
     fscm.prompt_login(True)
     fscm.start_engine()
 
-    fscm.get_quality_issue("1")
-    fscm.get_quality_issue("2")
-    fscm.get_work_order("120010")
-    fscm.get_quality_issue("3")
-    fscm.get_quality_issue("4")
+    fscm.get_quality_issue("199313")
+    fscm.get_quality_issue("199309")
+    fscm.get_quality_issue("199039")
+    fscm.get_quality_issue("199006")
 
     log("Oracle Interface Launched!", LogLevel.SUCCESS)
     os.system('cls')
