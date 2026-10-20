@@ -1,4 +1,5 @@
 from asyncio import timeout
+from typing import Callable
 
 from playwright.sync_api import Page, expect
 import Oracle.web as web, Oracle.interface as interface, main
@@ -13,14 +14,22 @@ from logger import *
 # Standard dictionary keys
 class SavedPageType(Enum):
     QUALITY_ISSUES_SEARCH = "quality_issues"
+    MANAGE_WORK_ORDERS = "manage_work_orders"
 
 saved_pages: dict = {}
 
-def get_saved_page(_type: SavedPageType):
+def get_saved_page(_type: SavedPageType, navigate: Callable):
     keys = saved_pages.keys()
     if keys is not None and _type in keys:
         return saved_pages.get(_type)
-    return None
+
+    log(f"No tab found for {_type.name}. Navigating...", LogLevel.PENDING)
+
+    p: Page = navigate()
+    saved_pages[_type] = p
+    log(f"Saved new page for type {_type.name}!", LogLevel.SUCCESS)
+
+    return p
 
 
 def get_deeplink(org_code: OrgCode | str, _type: web.DeeplinkObjType, action: web.DeeplinkAction, params: dict):
@@ -70,10 +79,8 @@ def goto_work_order(page: Page, job_num: str):
 def goto_quality_issue(engine: Engine, nc_num: str):
     page_type = SavedPageType.QUALITY_ISSUES_SEARCH
 
-    page: Page | None = get_saved_page(page_type)
-    if page is None:
-        log(f"No tab found for {page_type.name}. Navigating...", LogLevel.PENDING)
-        page = new_tab(engine)
+    def navigate():
+        p: Page = new_tab(engine)
 
         try:
             target_url = get_deeplink(
@@ -84,15 +91,14 @@ def goto_quality_issue(engine: Engine, nc_num: str):
 
                 }
             )
-            log(f"Navigating to {target_url}.")
-            page.goto(
+            p.goto(
                 target_url,
                 wait_until="domcontentloaded",
                 timeout=30000
             )
 
-            search_textbox = page.get_by_role("combobox", name="Search", exact=True)
-            search_button = page.get_by_role("button", name="Search", exact=True)
+            search_textbox = p.get_by_role("combobox", name="Search", exact=True)
+            search_button = p.get_by_role("button", name="Search", exact=True)
 
             # Searches a character that is not found in any NC numbers.
             # Throughout several trials, this consistently loaded the 'search' tab the fastest.
@@ -101,13 +107,13 @@ def goto_quality_issue(engine: Engine, nc_num: str):
 
             # Waits for the page to stop making requests
             # (Search doesn't work if metric panels are loading)
-            page.wait_for_load_state("networkidle")
+            p.wait_for_load_state("networkidle")
             search_button.click()
 
-            saved_pages[page_type] = page
-            log(f"Saved new page for type {page_type.name}!", LogLevel.SUCCESS)
+            return p
         except Exception as e:
             err_break(f"Error navigating to quality issues landing page!\n{e}")
+    page: Page = get_saved_page(page_type, navigate)
 
     search_tab = page.get_by_role("link", name="Search", exact=True)
     search_tab.click()
@@ -130,6 +136,37 @@ def goto_quality_issue(engine: Engine, nc_num: str):
     except Exception as e:
         log(f"Could not find any NCs for input {nc_num}\n{e}", LogLevel.WARN)
 
+def goto_manage_work_orders(engine: Engine):
+    page_type = SavedPageType.MANAGE_WORK_ORDERS
+
+    def navigate():
+        p: Page = new_tab(engine)
+
+        try:
+            target_url = get_deeplink(
+                OrgCode.SAUK_RAPIDS,
+                web.DeeplinkObjType.WIE_WORK_ORDER,
+                web.DeeplinkAction.EDIT,
+                {
+                    "workOrderNumber": "WO-SAU-"
+                }
+            )
+            log(target_url)
+            p.goto(
+                target_url,
+                wait_until="domcontentloaded",
+                timeout=30000
+            )
+
+            p.get_by_role("img", name="Close Tab", exact=True).click()
+            p.get_by_role("img", name="Tasks", exact=True).click()
+            p.get_by_role("link", name="Manage Work Orders", exact=True).click()
+
+            return p
+        except Exception as e:
+            err_break(f"Error navigating to manage work orders landing page!\n{e}")
+
+    return get_saved_page(page_type, navigate)
 
 def new_tab(engine: interface.Engine):
     page = engine.context.new_page()

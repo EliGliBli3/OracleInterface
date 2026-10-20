@@ -6,6 +6,7 @@ import utils
 import Oracle.web as o_web
 import Oracle.interface as o_api
 import Oracle.nav as nav
+from Oracle.interface import new_work_order
 from Oracle.web import WorkOrder
 
 from main import PROFILE_DIR, AUTH_STATE, ORACLE_HOST, ORACLE_TEST_HOST
@@ -184,6 +185,18 @@ def get_quality_issue(nc_num: str):
     validate_api()
 
     nav.goto_quality_issue(engine, nc_num)
+
+def create_work_order(work_order: WorkOrder|None):
+    validate_api()
+
+    """
+    1. Create Work Order (manage work orders)
+    2. Go to Work Order separately
+    3. Fill in details as necessary
+    4. DO NOT RELEASE (Await user confirmation)
+    """
+
+    new_work_order(engine)
 
 def open_new():
     return nav.new_tab(engine)
