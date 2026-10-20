@@ -1,13 +1,33 @@
+from asyncio import timeout
+
 from playwright.sync_api import Page
 import Oracle.web as web, Oracle.interface as interface, main
-from Oracle.web import WorkOrder
+from Oracle.interface import Engine
+from Oracle.web import WorkOrder, OrgCode
+from enum import Enum
+
+from logger import *
 
 
-def get_deeplink(org_code: str, _type: web.DeeplinkObjType, action: web.DeeplinkAction, params: dict):
+# Standard dictionary keys
+class SavedPageType(Enum):
+    QUALITY_ISSUES_SEARCH = "quality_issues"
+
+saved_pages: dict = {}
+
+def get_saved_page(_type: SavedPageType):
+    keys = saved_pages.keys()
+    if keys is not None and _type in keys:
+        return saved_pages.get(_type)
+    return None
+
+
+def get_deeplink(org_code: OrgCode | str, _type: web.DeeplinkObjType, action: web.DeeplinkAction, params: dict):
+    org_code_str = org_code.value if isinstance(org_code, OrgCode) else org_code
     url = (
-        f"{main.ORACLE_HOST}/fscmUI/faces/deeplink"
-        f"?objType={_type.value}&action={action.value}"
-        f"&objKey=organizationCode={org_code}"
+        f"{main.ORACLE_TEST_HOST if main.test_environment else main.ORACLE_HOST}/fscmUI/faces/deeplink"
+        f"?objType={_type.value}&action={action.value}" +
+        (f"&objKey=organizationCode={org_code_str}" if action != web.DeeplinkAction.NONE else "")
     )
     for param in params:
         url += f";{param}={params.get(param)}"
@@ -29,7 +49,7 @@ def goto_home(page: Page):
 def goto_work_order(page: Page, job_num: str):
     try:
         target_url = get_deeplink(
-            "231SAU",
+            OrgCode.SAUK_RAPIDS,
             web.DeeplinkObjType.WIE_WORK_ORDER,
             web.DeeplinkAction.EDIT,
             {
@@ -45,6 +65,59 @@ def goto_work_order(page: Page, job_num: str):
         return True
     except Exception:
         return False
+
+def goto_quality_issue(engine: Engine, nc_num: str):
+    page_type = SavedPageType.QUALITY_ISSUES_SEARCH
+
+    page: Page = get_saved_page(page_type)
+    if page is None:
+        log(f"No tab found for {page_type.name}. Navigating...", LogLevel.PENDING)
+        page = new_tab(engine)
+
+        try:
+            target_url = get_deeplink(
+                OrgCode.SAUK_RAPIDS,
+                web.DeeplinkObjType.QUALITY_ISSUES,
+                web.DeeplinkAction.NONE,
+                {
+
+                }
+            )
+            log(f"Navigating to {target_url}.")
+            page.goto(
+                target_url,
+                wait_until="domcontentloaded",
+                timeout=30000
+            )
+
+            search_textbox = page.get_by_role("combobox", name="Search", exact=True)
+            search_button = page.get_by_role("button", name="Search", exact=True)
+
+            # Searches a character that is not found in any NC numbers.
+            # Throughout several trials, this consistently loaded the 'search' tab the fastest.
+            search_textbox.click()
+            search_textbox.fill("!")
+
+            # Waits for the page to stop making requests
+            # (Search doesn't work if metric panels are loading)
+            page.wait_for_load_state("networkidle")
+            search_button.click()
+
+            saved_pages[page_type] = page
+            log(f"Saved new page for type {page_type.name}!", LogLevel.SUCCESS)
+        except Exception as e:
+            err_break(f"Error navigating to quality issues landing page!\n{e}")
+
+    search_tab = page.get_by_role("link", name="Search", exact=True)
+    search_tab.click()
+
+    search_bar_fast = page.get_by_placeholder("Search For", exact=True)
+    search_bar_fast.click()
+
+    search_bar_fast.fill(nc_num)
+
+
+
 
 
 def new_tab(engine: interface.Engine):

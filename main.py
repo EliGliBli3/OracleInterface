@@ -4,12 +4,15 @@ import traceback
 
 from Engines import oracle_engine as fscm, cli_engine as cli
 from pathlib import Path
+
 from logger import *
 
 AUTH_STATE = Path("../Oracle/auth/oracle_auth_state.json")
 PROFILE_DIR = "../Oracle/auth/oracle_cookies"
-ORACLE_HOST = "https://fa-eovh-test-saasfaprod1.fa.ocs.oraclecloud.com" #"https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
-LOGIN_URL = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
+ORACLE_HOST =  "https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
+ORACLE_TEST_HOST = "https://fa-eovh-test-saasfaprod1.fa.ocs.oraclecloud.com"
+
+test_environment: bool = False
 
 program_start = datetime.now()
 sys_exit = sys.exit
@@ -45,11 +48,16 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, handle_signal)
     sys.excepthook = handle_exception
 
-
     log("Starting Oracle Interface...", LogLevel.PENDING)
 
-    fscm.prompt_login()
+    fscm.prompt_login(True)
     fscm.start_engine()
+
+    fscm.get_quality_issue("1")
+    fscm.get_quality_issue("2")
+    fscm.get_work_order("120010")
+    fscm.get_quality_issue("3")
+    fscm.get_quality_issue("4")
 
     log("Oracle Interface Launched!", LogLevel.SUCCESS)
     os.system('cls')

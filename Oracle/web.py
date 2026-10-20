@@ -6,6 +6,9 @@ class Date:
     def __init__(self, _datetime: datetime):
         self.value = _datetime.strftime("%m:%d:%y %-I:%M %p")
 
+class OrgCode(Enum):
+    SAUK_RAPIDS = "231SAU"
+
 class DeeplinkObjType(Enum):
     WIE_WORK_ORDER = "WIE_WORK_ORDER"
     QUALITY_ISSUES = "ISSUES"
@@ -13,6 +16,7 @@ class DeeplinkObjType(Enum):
 class DeeplinkAction(Enum):
     EDIT = "EDIT"
     VIEW = "VIEW"
+    NONE = "NONE"
 
 class WorkOrder:
     class Status(Enum):
@@ -50,11 +54,15 @@ class WorkOrder:
 
     class Item:
         def __init__(self):
-            pass
+            self.name: str
+            self.fixed: bool
+            self.quantity: float
 
     class Resource:
         def __init__(self):
-            pass
+            self.name: str
+            self.fixed: bool
+            self.usage_rate: float
 
     class Operation:
         class SupplierDetails:

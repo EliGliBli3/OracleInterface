@@ -1,6 +1,5 @@
 import playwright.sync_api
 from playwright.sync_api import Playwright
-from web import *
 
 
 class Engine:
