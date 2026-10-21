@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
-from turtledemo.penrose import start
 
 class Date:
     def __init__(self, _datetime: datetime):
@@ -18,6 +19,7 @@ class DeeplinkAction(Enum):
     VIEW = "VIEW"
     NONE = "NONE"
 
+
 class WorkOrder:
     class Status(Enum):
         CANCELED = "Canceled"
@@ -32,17 +34,17 @@ class WorkOrder:
         def get(web_status: str):
             return [s.name for s in list(WorkOrder.Status) if s.value == web_status][0]
     class Type(Enum):
-        STANDARD = 0
-        REWORK = 1
-        NONSTANDARD = 2
-        TRANSFORM = 3
+        STANDARD = "Standard"
+        REWORK = "Rework"
+        NONSTANDARD = "Nonstandard"
+        TRANSFORM = "Transform"
 
     class BaseInformation:
-        def __init__(self):
-            self.work_order_id: str
-            self.work_order_type: WorkOrder.Type
-            self.part: str
-            self.quantity: int
+        def __init__(self, _id: str, _type: WorkOrder.Type, _part: str, _quantity: int):
+            self.work_order_id: str = _id
+            self.work_order_type: WorkOrder.Type = _type
+            self.part: str = _part
+            self.quantity: int = _quantity
 
     class GeneralInformation:
         def __init__(self):

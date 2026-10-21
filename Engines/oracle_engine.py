@@ -196,7 +196,12 @@ def create_work_order(work_order: WorkOrder|None):
     4. DO NOT RELEASE (Await user confirmation)
     """
 
-    new_work_order(engine)
+    new_work_order(engine, WorkOrder.BaseInformation(
+        _id="WO-SAU-TEST123",
+        _quantity=5,
+        _part="03-33-1565-003",
+        _type=WorkOrder.Type.REWORK
+    ))
 
 def open_new():
     return nav.new_tab(engine)
