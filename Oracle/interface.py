@@ -6,7 +6,6 @@ from playwright.sync_api import Playwright, Page
 from logger import *
 
 lazy import Oracle.web as o_web
-
 lazy import Oracle.nav as nav
 
 
@@ -92,4 +91,5 @@ def new_work_order(engine: Engine, _info: o_web.WorkOrder.BaseInformation):
         # Creates the work order and returns to the Manage Work Orders screen.
         popup.get_by_role("button", name="Save and Close", exact=True).click()
 
-    sequence()
+        return True
+    return sequence()

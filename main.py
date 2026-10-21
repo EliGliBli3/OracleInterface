@@ -37,7 +37,7 @@ def handle_exception(exc_type, value, tb):
 def close(code: int = 0):
     sig = get_signal_info(code)
 
-    log(f"Exiting with code {code} ({sig['name']: {sig['description']}}).")
+    log(f"Exiting with code {code} ({sig['name']}: {sig['description']}).")
     fscm.dispose()
     sys_exit(code)
 
