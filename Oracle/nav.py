@@ -1,11 +1,9 @@
-from asyncio import timeout
 from typing import Callable
 
 from playwright.sync_api import Page, expect
 import Oracle.web as web, Oracle.interface as interface, main
 from Oracle.interface import Engine
-from Oracle.web import WorkOrder, OrgCode
-from enum import Enum
+from Oracle.web import OrgCode
 import re
 
 from logger import *

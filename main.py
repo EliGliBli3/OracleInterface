@@ -32,7 +32,7 @@ def handle_signal(signum, frame):
     sys.exit(128 + signum)
 
 def handle_exception(exc_type, value, tb):
-    log(f"{exc_type}: {value}\n\nTraceback Info: {"".join(traceback.format_exception(value))}", LogLevel.ERROR)
+    log(f"{exc_type}: {value}\n\nTraceback Info: {''.join(traceback.format_exception(value))}", LogLevel.ERROR)
 
 def close(code: int = 0):
     sig = get_signal_info(code)

@@ -12,7 +12,7 @@ from Oracle.web import WorkOrder
 from main import PROFILE_DIR, AUTH_STATE, ORACLE_HOST, ORACLE_TEST_HOST
 from logger import *
 
-engine: o_api.Engine = None
+engine: o_api.Engine|None = None
 
 def block_unneeded_resources(route):
     if route.request.resource_type in {"image", "font"}:
@@ -197,9 +197,9 @@ def create_work_order(work_order: WorkOrder|None):
     """
 
     new_work_order(engine, WorkOrder.BaseInformation(
-        _id="WO-SAU-TEST123",
+        _id="102022-1A",
         _quantity=5,
-        _part="03-33-1565-003",
+        _part="03-15-2007",
         _type=WorkOrder.Type.REWORK
     ))
 

@@ -41,7 +41,7 @@ class WorkOrder:
 
     class BaseInformation:
         def __init__(self, _id: str, _type: WorkOrder.Type, _part: str, _quantity: int):
-            self.work_order_id: str = _id
+            self.work_order_id: str = "WO-SAU-" + _id.replace("WO-SAU-", "")
             self.work_order_type: WorkOrder.Type = _type
             self.part: str = _part
             self.quantity: int = _quantity
