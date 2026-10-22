@@ -131,6 +131,7 @@ def dispose():
 
 def get_work_order(wo_id: str):
     validate_api()
+    assert engine is not None
 
     p: playwright.sync_api.Page
     with nav.new_tab(engine) as p:
@@ -183,11 +184,13 @@ def get_work_order(wo_id: str):
 
 def get_quality_issue(nc_num: str):
     validate_api()
+    assert engine is not None
 
     nav.goto_quality_issue(engine, nc_num)
 
 def create_work_order(work_order: WorkOrder|None):
     validate_api()
+    assert engine is not None
 
     """
     1. Create Work Order (manage work orders)
@@ -204,4 +207,7 @@ def create_work_order(work_order: WorkOrder|None):
     ))
 
 def open_new():
+    validate_api()
+    assert engine is not None
+
     return nav.new_tab(engine)

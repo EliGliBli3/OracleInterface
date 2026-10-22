@@ -20,6 +20,137 @@ class Engine:
         self.pw: Playwright = pw
         self.pages: list[playwright.sync_api.Page] = []
 
+WO = o_web.WorkOrder
+class WorkOrderInterface:
+
+    class BaseInformation:
+        @staticmethod
+        def set_quantity(work_order: WO, value: int):
+            if work_order.general_information.status != WO.Status.RELEASED:
+                log(f"Cannot change quantity when work order is {work_order.general_information.status.value}")
+
+    class GeneralInformation:
+        @staticmethod
+        def set_status(work_order: WO, value: WO.Status):
+            pass
+
+        @staticmethod
+        def set_description(work_order: WO, value: str):
+            pass
+
+        @staticmethod
+        def set_priority(work_order: WO, value: int):
+            pass
+
+        @staticmethod
+        def set_start_date(work_order: WO, value: o_web.Date):
+            pass
+
+        @staticmethod
+        def set_end_date(work_order: WO, value: o_web.Date):
+            pass
+
+    class Operations:
+        class Operation:
+            class SupplierDetails:
+                @staticmethod
+                def set_osp_item(work_order: WO, value: str):
+                    pass
+
+                @staticmethod
+                def set_supplier(work_order: WO, value: str):
+                    pass
+
+                @staticmethod
+                def set_generate_shipment(work_order: WO, value: bool):
+                    pass
+
+                @staticmethod
+                def set_lead_time(work_order: WO, value: float|int):
+                    pass
+
+            class Item:
+                @staticmethod
+                def set_is_fixed(work_order: WO, op: int, item: WO.Item|str, value: bool):
+                    pass
+
+                @staticmethod
+                def set_quantity(work_order: WO, op: int, item: WO.Item|str, value: int):
+                    pass
+
+            class Resource:
+                @staticmethod
+                def set_is_fixed(work_order: WO, op: int, resource: WO.Resource|str, value: bool):
+                    pass
+
+                @staticmethod
+                def set_usage_rate(work_order: WO, op: int, resource: WO.Resource|str, value: float):
+                    pass
+
+            @staticmethod
+            def set_name(work_order: WO, op: int, value: str):
+                pass
+
+            @staticmethod
+            def set_work_center(work_order: WO, op: int, value: str):
+                pass
+
+            @staticmethod
+            def set_work_instruction(work_order: WO, op: int, value: str):
+                pass
+
+            @staticmethod
+            def add_item(work_order: WO, op: int, value: WO.Item):
+                pass
+
+            @staticmethod
+            def remove_item(work_order: WO, op: int, value: WO.Item|str):
+                pass
+
+            @staticmethod
+            def add_resource(work_order: WO, op: int, value: WO.Resource):
+                pass
+
+            @staticmethod
+            def remove_resource(work_order: WO, op: int, resource_name: str):
+                pass
+
+
+        @staticmethod
+        def add_operation(work_order: WO, value: WO.Operation):
+            pass
+
+        @staticmethod
+        def remove_operation(work_order: WO, op: int):
+            pass
+
+    class Lots:
+        @staticmethod
+        def set_lot(work_order: WO, lot: str, quantity: int):
+            # !!! Update description after all changes !!!
+
+            """
+            if lot not exists:
+                if quantity == 0:
+                    # Not a change, don't update description.
+                    return
+
+                # Add lot with quantity
+                    Return
+            """
+
+            if quantity == 0:
+                # Remove
+                return
+
+            """
+            (IF LOT EXISTS & QUANTITY > 0)
+            
+            # Fetch lot and change quantity
+            
+            """
+
+
 
 def new_work_order(engine: Engine, _info: o_web.WorkOrder.BaseInformation):
     # Navigates to the manage work orders page

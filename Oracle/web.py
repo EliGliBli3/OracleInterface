@@ -19,7 +19,6 @@ class DeeplinkAction(Enum):
     VIEW = "VIEW"
     NONE = "NONE"
 
-
 class WorkOrder:
     class Status(Enum):
         CANCELED = "Canceled"
@@ -38,6 +37,10 @@ class WorkOrder:
         REWORK = "Rework"
         NONSTANDARD = "Nonstandard"
         TRANSFORM = "Transform"
+
+    class OperationType(Enum):
+        IN_HOUSE = "In-house"
+        SUPPLIER = "Supplier"
 
     class BaseInformation:
         def __init__(self, _id: str, _type: WorkOrder.Type, _part: str, _quantity: int):
@@ -77,7 +80,7 @@ class WorkOrder:
         def __init__(self):
             self.op: int
             self.code: str | (str, str)  # Code | (Name, WorkCenter)
-            self.operation_type: str
+            self.operation_type: WorkOrder.OperationType
             self.work_instruction: str
             self.items: list[WorkOrder.Item]
             self.resources: list[WorkOrder.Resource]
@@ -87,4 +90,4 @@ class WorkOrder:
         self.base_information: WorkOrder.BaseInformation
         self.general_information: WorkOrder.GeneralInformation = general_information
         self.operations: list[WorkOrder.Operation] = operations
-        self.lots = list[str]
+        self.lots: dict[str, int]
