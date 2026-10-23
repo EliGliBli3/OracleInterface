@@ -229,7 +229,9 @@ class WorkOrderInterface:
             """
 
 
-
+# TODO:
+#  POPULATE QUANTITY *FIRST*
+#  It's faster! :)
 def new_work_order(engine: Engine, _info: o_web.WorkOrder.BaseInformation):
     # Navigates to the manage work orders page
     page: Page = nav.goto_manage_work_orders(engine)
