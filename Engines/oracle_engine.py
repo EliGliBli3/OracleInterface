@@ -6,6 +6,7 @@ import utils
 import Oracle.web as o_web
 import Oracle.interface as o_api
 import Oracle.nav as nav
+from Oracle import interface
 from Oracle.interface import new_work_order
 from Oracle.web import WorkOrder
 
@@ -143,7 +144,7 @@ def get_work_order(wo_id: str):
             def attempt_expand_details():
 
                 if p.get_by_role("button", name="Collapse Details",exact=True).count() > 0:
-                    print("Found evidence of expansion... moving forward")
+                    print("Found expansion... continuing")
                     return True
                 try:
                     # Expand details so that they can be read
@@ -205,6 +206,12 @@ def create_work_order(work_order: WorkOrder|None):
         _part="03-15-2007",
         _type=WorkOrder.Type.REWORK
     ))
+
+def test_abc():
+    validate_api()
+    assert engine is not None
+
+    interface.WorkOrderInterface.Operations.Operation.set_name("146893", 0, "")
 
 def open_new():
     validate_api()

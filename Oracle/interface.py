@@ -3,6 +3,7 @@ import copy
 import playwright.sync_api
 from playwright.sync_api import Playwright, Page
 
+from Engines import oracle_engine
 from logger import *
 
 lazy import Oracle.web as o_web
@@ -22,111 +23,188 @@ class Engine:
 
 WO = o_web.WorkOrder
 class WorkOrderInterface:
+    @staticmethod
+    def get_work_order_page(work_order: WO|str, engine: Engine|None):
+        oracle_engine.validate_api()
+        if engine is None:
+            engine = oracle_engine.engine
+        assert engine is not None
+
+        _id: str = work_order.base_information.work_order_id if isinstance(work_order, WO) else ("WO-SAU-" + work_order.replace("WO-SAU-", ""))
+
+        return nav.get_saved_page(
+            _id,
+            lambda: nav.goto_work_order(nav.new_tab(engine), _id)
+        )
+
 
     class BaseInformation:
         @staticmethod
         def set_quantity(work_order: WO, value: int):
-            if work_order.general_information.status != WO.Status.RELEASED:
-                log(f"Cannot change quantity when work order is {work_order.general_information.status.value}")
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
+            if work_order.general_information.status != WO.Status.UNRELEASED:
+                log(f"Cannot change quantity when work order is {work_order.general_information.status.value}", LogLevel.WARN)
+                return
+
+            p.get_by_role("link", name="General Information", exact=True).click()
+            quantity_texbox = p.get_by_role("textbox", name="Quantity", exact=True)
+            quantity_texbox.click()
+            quantity_texbox.fill(str(value))
+            work_order.base_information.quantity = value
 
     class GeneralInformation:
         @staticmethod
         def set_status(work_order: WO, value: WO.Status):
-            pass
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
+            log("Setting a work order's status is not yet supported."
+                     "\nWork order status should only be changed by the program if directed by a user, never automatically.",
+                LogLevel.WARN)
 
         @staticmethod
         def set_description(work_order: WO, value: str):
-            pass
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
+
+            p.get_by_role("link", name="General Information", exact=True).click()
+            description_textbox = p.get_by_role("textbox", name="Description", exact=True)
+            description_textbox.click()
+            description_textbox.fill(value)
+            work_order.general_information.description = value
+
 
         @staticmethod
         def set_priority(work_order: WO, value: int):
-            pass
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
+
+            p.get_by_role("link", name="General Information", exact=True).click()
+            priority_textbox = p.get_by_role("textbox", name="Priority", exact=True)
+            priority_textbox.click()
+            priority_textbox.fill(str(value))
+            work_order.general_information.priority = value
 
         @staticmethod
         def set_start_date(work_order: WO, value: o_web.Date):
-            pass
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
+
+            p.get_by_role("link", name="General Information", exact=True).click()
+            start_date_textbox = p.get_by_role("textbox", name="Start Date", exact=True)
+            start_date_textbox.click()
+            start_date_textbox.fill(value.value)
+            work_order.general_information.start_date = value
 
         @staticmethod
         def set_end_date(work_order: WO, value: o_web.Date):
-            pass
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
+
+            p.get_by_role("link", name="General Information", exact=True).click()
+            end_date_textbox = p.get_by_role("textbox", name="Completion Date", exact=True)
+            end_date_textbox.click()
+            end_date_textbox.fill(value.value)
+            work_order.general_information.start_date = value
 
     class Operations:
+
         class Operation:
             class SupplierDetails:
                 @staticmethod
                 def set_osp_item(work_order: WO, value: str):
-                    pass
+                    p: Page = WorkOrderInterface.get_work_order_page(work_order)
+                    log("This feature is not supported yet.", LogLevel.WARN)
+
 
                 @staticmethod
                 def set_supplier(work_order: WO, value: str):
-                    pass
+                    p: Page = WorkOrderInterface.get_work_order_page(work_order)
+                    log("This feature is not supported yet.", LogLevel.WARN)
 
                 @staticmethod
                 def set_generate_shipment(work_order: WO, value: bool):
-                    pass
+                    p: Page = WorkOrderInterface.get_work_order_page(work_order)
+                    log("This feature is not supported yet.", LogLevel.WARN)
 
                 @staticmethod
                 def set_lead_time(work_order: WO, value: float|int):
-                    pass
+                    p: Page = WorkOrderInterface.get_work_order_page(work_order)
+                    log("This feature is not supported yet.", LogLevel.WARN)
 
             class Item:
                 @staticmethod
                 def set_is_fixed(work_order: WO, op: int, item: WO.Item|str, value: bool):
+                    p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     pass
 
                 @staticmethod
                 def set_quantity(work_order: WO, op: int, item: WO.Item|str, value: int):
+                    p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     pass
 
             class Resource:
                 @staticmethod
                 def set_is_fixed(work_order: WO, op: int, resource: WO.Resource|str, value: bool):
+                    p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     pass
 
                 @staticmethod
                 def set_usage_rate(work_order: WO, op: int, resource: WO.Resource|str, value: float):
+                    p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     pass
 
             @staticmethod
-            def set_name(work_order: WO, op: int, value: str):
-                pass
+            def set_name(work_order: WO|str, op: int, value: str):
+                p: Page = WorkOrderInterface.get_work_order_page(work_order, None)
 
-            @staticmethod
-            def set_work_center(work_order: WO, op: int, value: str):
-                pass
+                p.wait_for_load_state("networkidle")
+
+                p.get_by_role("link", name="Operations", exact=False).click()
+
+                p.wait_for_timeout(1000)
+                playwright.sync_api.expect(p.get_by_text("Operation Yield", exact=True)).to_be_visible()
+
+                # Only the operations panel has _afrtotalrows on this page, and the panel is the only class child.
+                operations_panel = p.locator('div[_afrtotalrows]')
+                log(f"Matched for {operations_panel.count()} panels.")
+
+                log(f"There are {operations_panel.locator("> *").count()} operations.")
 
             @staticmethod
             def set_work_instruction(work_order: WO, op: int, value: str):
+                p: Page = WorkOrderInterface.get_work_order_page(work_order)
                 pass
 
             @staticmethod
             def add_item(work_order: WO, op: int, value: WO.Item):
+                p: Page = WorkOrderInterface.get_work_order_page(work_order)
                 pass
 
             @staticmethod
             def remove_item(work_order: WO, op: int, value: WO.Item|str):
+                p: Page = WorkOrderInterface.get_work_order_page(work_order)
                 pass
 
             @staticmethod
             def add_resource(work_order: WO, op: int, value: WO.Resource):
+                p: Page = WorkOrderInterface.get_work_order_page(work_order)
                 pass
 
             @staticmethod
             def remove_resource(work_order: WO, op: int, resource_name: str):
+                p: Page = WorkOrderInterface.get_work_order_page(work_order)
                 pass
 
 
         @staticmethod
         def add_operation(work_order: WO, value: WO.Operation):
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
             pass
 
         @staticmethod
         def remove_operation(work_order: WO, op: int):
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
             pass
 
     class Lots:
         @staticmethod
         def set_lot(work_order: WO, lot: str, quantity: int):
+            p: Page = WorkOrderInterface.get_work_order_page(work_order)
             # !!! Update description after all changes !!!
 
             """

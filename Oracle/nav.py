@@ -14,18 +14,20 @@ class SavedPageType(Enum):
     QUALITY_ISSUES_SEARCH = "quality_issues"
     MANAGE_WORK_ORDERS = "manage_work_orders"
 
-saved_pages: dict = {}
+saved_pages: dict[str, Page] = {}
 
-def get_saved_page(_type: SavedPageType, navigate: Callable):
+def get_saved_page(_type: SavedPageType|str, navigate: Callable):
+    str_type = _type.value if isinstance(_type, SavedPageType) else _type
+
     keys = saved_pages.keys()
     if keys is not None and _type in keys:
-        return saved_pages.get(_type)
+        return saved_pages.get(str_type)
 
-    log(f"No tab found for {_type.name}. Navigating...", LogLevel.PENDING)
+    log(f"No tab found for {str_type}. Navigating...", LogLevel.PENDING)
 
     p: Page = navigate()
-    saved_pages[_type] = p
-    log(f"Saved new page for type {_type.name}!", LogLevel.SUCCESS)
+    saved_pages[str_type] = p
+    log(f"Saved new page for type {str_type}!", LogLevel.SUCCESS)
 
     return p
 
@@ -61,18 +63,19 @@ def goto_work_order(page: Page, job_num: str):
             web.DeeplinkObjType.WIE_WORK_ORDER,
             web.DeeplinkAction.EDIT,
             {
-                "workOrderNumber": f"WO-SAU-{job_num}"
+                "workOrderNumber": "WO-SAU-" + job_num.replace("WO-SAU-", "")
             }
         )
+        log(f"Going to {target_url}...")
         page.goto(
             target_url,
             wait_until="domcontentloaded",
             timeout=30000
         )
 
-        return True
+        return page
     except Exception:
-        return False
+        return None
 
 def goto_quality_issue(engine: Engine, nc_num: str):
     page_type = SavedPageType.QUALITY_ISSUES_SEARCH
