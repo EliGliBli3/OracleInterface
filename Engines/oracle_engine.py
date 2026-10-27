@@ -211,7 +211,35 @@ def test_abc():
     validate_api()
     assert engine is not None
 
-    interface.WorkOrderInterface.Operations.Operation.set_name("146893", 0, "")
+    dummy = WorkOrder(
+        base_information=WorkOrder.BaseInformation(
+            _id="149096",
+            _type=WorkOrder.Type.STANDARD,
+            _part="03-29-2047",
+            _quantity=9
+        ),
+        general_information=WorkOrder.GeneralInformation(
+            status=WorkOrder.Status.UNRELEASED,
+            description="",
+            priority=9,
+            start_date=None,
+            end_date=None
+        )
+    )
+    interface.WorkOrderInterface.Operations.add_operations(dummy, [
+        WorkOrder.Operation(
+            code="CRWK",
+            op=1
+        ),
+        WorkOrder.Operation(
+            code="SMRWK",
+            op=2
+        ),
+        WorkOrder.Operation(
+            code=("TEST", "SAW"),
+            op=3
+        )
+    ])
 
 def open_new():
     validate_api()

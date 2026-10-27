@@ -50,12 +50,12 @@ class WorkOrder:
             self.quantity: int = _quantity
 
     class GeneralInformation:
-        def __init__(self):
-            self.status: WorkOrder.Status
-            self.description: str
-            self.priority: int
-            self.start_date: Date
-            self.end_date: Date
+        def __init__(self, status: WorkOrder.Status, description: str, priority: int, start_date: Date|None, end_date: Date|None):
+            self.status: WorkOrder.Status = status
+            self.description: str = description
+            self.priority: int = priority
+            self.start_date: Date = start_date
+            self.end_date: Date = end_date
 
     class Item:
         def __init__(self):
@@ -77,17 +77,33 @@ class WorkOrder:
                 self.generate_shipment: bool
                 self.lead_time: int # in hours
 
-        def __init__(self):
-            self.op: int
-            self.code: str | (str, str)  # Code | (Name, WorkCenter)
-            self.operation_type: WorkOrder.OperationType
-            self.work_instruction: str
-            self.items: list[WorkOrder.Item]
-            self.resources: list[WorkOrder.Resource]
-            self.supplier_details: WorkOrder.Operation.SupplierDetails
+        def __init__(self,
+                     code: str | (str, str,),
+                     op: int = -1,
+                     operation_type: WorkOrder.OperationType|None = None,
+                     work_instruction: str = "",
+                     items=None,
+                     resources=None,
+                     supplier_details = None
 
-    def __init__(self, general_information: GeneralInformation, operations: list[Operation]):
-        self.base_information: WorkOrder.BaseInformation
+        ):
+            if items is None:
+                items = []
+            if resources is None:
+                resources = []
+            if operation_type is None:
+                operation_type = WorkOrder.OperationType.IN_HOUSE
+
+            self.op: int = op
+            self.code: str | (str, str) = code  # Code | (Name, WorkCenter)
+            self.operation_type: WorkOrder.OperationType = operation_type
+            self.work_instruction: str = work_instruction
+            self.items: list[WorkOrder.Item] = items
+            self.resources: list[WorkOrder.Resource] = resources
+            self.supplier_details: WorkOrder.Operation.SupplierDetails = supplier_details
+
+    def __init__(self, base_information: WorkOrder.BaseInformation|None = None, general_information: GeneralInformation|None = None, operations: list[Operation]|None = None):
+        self.base_information: WorkOrder.BaseInformation = base_information
         self.general_information: WorkOrder.GeneralInformation = general_information
         self.operations: list[WorkOrder.Operation] = operations
         self.lots: dict[str, int]
