@@ -366,6 +366,11 @@ class QualityIssueInterface:
     def approve_issue(issue_id: int):
         oracle_engine.validate_api(); assert oracle_engine.engine is not None
 
+        #TODO:
+        #   - EDGE CASE: ISSUE APPROVED BUT STUCK IN APPROVAL
+        #   - "SAVE AND CLOSE" INSTEAD OF CLOSING TAB
+        #   - HOLD ISSUES THAT HAVE INDETERMINATE DATA
+
         p: Page = nav.goto_quality_issue(oracle_engine.engine, str(issue_id))
 
         log(f"Approving NC{issue_id}", LogLevel.PENDING)
