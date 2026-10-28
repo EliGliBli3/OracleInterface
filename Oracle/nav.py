@@ -77,9 +77,8 @@ def goto_work_order(page: Page, job_num: str):
     except Exception:
         return None
 
-def goto_quality_issue(engine: Engine, nc_num: str):
+def goto_quality_issues(engine: Engine):
     page_type = SavedPageType.QUALITY_ISSUES_SEARCH
-
     def navigate():
         p: Page = new_tab(engine)
 
@@ -114,7 +113,12 @@ def goto_quality_issue(engine: Engine, nc_num: str):
             return p
         except Exception as e:
             err_break(f"Error navigating to quality issues landing page!\n{e}")
-    page: Page = get_saved_page(page_type, navigate)
+
+    p: Page|None = get_saved_page(page_type, navigate); assert p is not None
+    return p
+
+def goto_quality_issue(engine: Engine, nc_num: str):
+    page: Page = goto_quality_issues(engine)
 
     search_tab = page.get_by_role("link", name="Search", exact=True)
     search_tab.click()
@@ -136,6 +140,8 @@ def goto_quality_issue(engine: Engine, nc_num: str):
         nc_link.click()
     except Exception as e:
         log(f"Could not find any NCs for input {nc_num}\n{e}", LogLevel.WARN)
+
+    assert page is not None; return page
 
 def goto_manage_work_orders(engine: Engine):
     page_type = SavedPageType.MANAGE_WORK_ORDERS

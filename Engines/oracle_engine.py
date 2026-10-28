@@ -1,7 +1,10 @@
 import playwright
-from playwright.sync_api import sync_playwright, Playwright
+from playwright.sync_api import sync_playwright, Playwright, Page
+
+import os
 
 import Oracle.web
+import main
 import utils
 import Oracle.web as o_web
 import Oracle.interface as o_api
@@ -9,6 +12,9 @@ import Oracle.nav as nav
 from Oracle import interface
 from Oracle.interface import new_work_order
 from Oracle.web import WorkOrder
+
+import xlrd as xl
+import pandas as pd
 
 from main import PROFILE_DIR, AUTH_STATE, ORACLE_HOST, ORACLE_TEST_HOST
 from logger import *
@@ -63,10 +69,8 @@ def get_label(page, label_text, return_none: bool = False):
 def validate_api():
     if engine is None:
         err_break("No engine was initialized. Call start_engine() before using the api.")
-    if engine.pages is None:
-        log("Engine pages were unexpectedly invalidated.", LogLevel.WARN)
-        log("Revalidating engine page collection...", LogLevel.PENDING)
-        engine.pages = []
+    assert engine is not None
+
     if len(engine.pages) == 0:
         log("Revalidating main page...", LogLevel.PENDING)
         engine.pages.append(engine.context.new_page())
@@ -94,6 +98,28 @@ def prompt_login(test_environment: bool):
             okta_button = page.get_by_role("img", name="Okta")
             okta_button.click()
 
+        def capture_username(username):
+            main.AUTHORIZED_USER = username + "@ichorsystems.com"
+            log("Logging in as " + main.AUTHORIZED_USER)
+
+        page.expose_function("captureUsername", capture_username)
+
+        add_button_listener: str = """
+            document.addEventListener('click', (event) => {
+                const button = event.target.closest('[value="Sign In"]');
+    
+                if (!button) {
+                    return;
+                }
+    
+                const usernameField = document.querySelector('input[id="okta-signin-username"]')
+                if (usernameField) {
+                    window.captureUsername(usernameField.value);
+                }
+            }, true);
+        """
+        page.evaluate(add_button_listener)
+
         # Wait for user to finish authentication.
         page.wait_for_url("**/fscmUI/faces/*", timeout=120000)
 
@@ -107,20 +133,23 @@ def prompt_login(test_environment: bool):
 
 def start_engine():
     global engine
-
     log("Starting browser engine...", LogLevel.PENDING)
+
     if not AUTH_STATE.exists():
         err_break("run_login() was not fully executed before engine start.")
 
     pw: Playwright = sync_playwright().start()
     log("Playwright engine started.")
+
     browser = pw.chromium.launch(headless=False)
     log("Browser launched.")
+
     context = browser.new_context(
         storage_state=str(AUTH_STATE),
-        viewport={"width": int(1920/2), "height": int(1080/2)}
+        viewport={"width": int(1920/2), "height": int(1080/2)},
+        accept_downloads=True
     )
-    engine = o_api.Engine(browser, context, pw)
+    engine = o_api.Engine(browser, context, pw); assert engine is not None
     engine.pages = [engine.context.new_page()]
     log("Engine initialized.", LogLevel.SUCCESS)
 
@@ -131,8 +160,7 @@ def dispose():
         engine.pw.stop()
 
 def get_work_order(wo_id: str):
-    validate_api()
-    assert engine is not None
+    validate_api(); assert engine is not None
 
     p: playwright.sync_api.Page
     with nav.new_tab(engine) as p:
@@ -184,14 +212,12 @@ def get_work_order(wo_id: str):
         return True #o_web.WorkOrder(wo_id, _type, item, int(qty), WorkOrder.Status.get(status), description, start_date, end_date)
 
 def get_quality_issue(nc_num: str):
-    validate_api()
-    assert engine is not None
+    validate_api(); assert engine is not None
 
     nav.goto_quality_issue(engine, nc_num)
 
 def create_work_order(work_order: WorkOrder|None):
-    validate_api()
-    assert engine is not None
+    validate_api(); assert engine is not None
 
     """
     1. Create Work Order (manage work orders)
@@ -207,42 +233,62 @@ def create_work_order(work_order: WorkOrder|None):
         _type=WorkOrder.Type.REWORK
     ))
 
-def test_abc():
-    validate_api()
-    assert engine is not None
+def fetch_issues(assignee: str = "", name: str = "", severity: int = 0, status: o_web.QualityIssue.Status|None = None):
+    validate_api(); assert engine is not None
+    p: Page = nav.goto_quality_issues(engine)
 
-    dummy = WorkOrder(
-        base_information=WorkOrder.BaseInformation(
-            _id="149096",
-            _type=WorkOrder.Type.STANDARD,
-            _part="03-29-2047",
-            _quantity=9
-        ),
-        general_information=WorkOrder.GeneralInformation(
-            status=WorkOrder.Status.UNRELEASED,
-            description="",
-            priority=9,
-            start_date=None,
-            end_date=None
-        )
-    )
-    interface.WorkOrderInterface.Operations.add_operations(dummy, [
-        WorkOrder.Operation(
-            code="CRWK",
-            op=1
-        ),
-        WorkOrder.Operation(
-            code="SMRWK",
-            op=2
-        ),
-        WorkOrder.Operation(
-            code=("TEST", "SAW"),
-            op=3
-        )
-    ])
+    p.get_by_role("link", name="Show Filters", exact=True).click()
+    filters_panel = p.get_by_role("search").first
+
+    def populate_filters():
+        p.get_by_role("combobox", name="Saved Search", exact=True).select_option("Quality Issues")
+
+        number_textbox = filters_panel.get_by_role("textbox", name="Number", exact=True)
+        number_textbox.click()
+        number_textbox.fill("")
+
+        assignee_combobox = filters_panel.get_by_role("combobox", name="Assigned To", exact=True)
+        assignee_combobox.click()
+        assignee_combobox.fill(assignee)
+
+        name_textbox = filters_panel.get_by_role("textbox", name="Name", exact=True)
+        name_textbox.click()
+        name_textbox.fill(name)
+
+        severity_combobox = filters_panel.get_by_role("combobox", name="Severity", exact=True)
+        severity_combobox.select_option(index=severity)
+
+        status_type_combobox = filters_panel.get_by_role("combobox", name="Status Type", exact=True)
+        status_type_combobox.select_option(value=status.value if status is not None else None, index=0 if status is None else None)
+
+    def fetch_excel_columns():
+        with p.expect_download() as dl_info:
+            p.get_by_role("img", name="Export to Excel", exact=True).click()
+        dl = dl_info.value
+        dl_path = Path("temp/quality_issues/issues.xls")
+
+        dl_path.unlink(missing_ok=True)
+        dl.save_as(dl_path)
+
+        tables = pd.read_html(dl_path)
+        return tables[0]['Number']
+
+    populate_filters()
+    filters_panel.get_by_role("button", name="Search", exact=True).click()
+
+    p.wait_for_load_state("networkidle")
+
+    return fetch_excel_columns()
+
+
+def approve_all_pending_issues():
+    validate_api(); assert engine is not None
+
+    issues = fetch_issues(assignee=main.AUTHORIZED_USER, status=o_web.QualityIssue.Status.APPROVAL)
+    for issue in issues:
+        log(f"Found issue {issue}")
+
 
 def open_new():
-    validate_api()
-    assert engine is not None
-
+    validate_api(); assert engine is not None
     return nav.new_tab(engine)

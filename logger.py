@@ -4,6 +4,7 @@ from pathlib import Path
 
 import main
 
+LOG_NAME = ""
 
 class LogLevel(Enum):
     SUCCESS = '🟢'
@@ -13,6 +14,8 @@ class LogLevel(Enum):
     NONE = '⚪'
 
 def log(msg, level: LogLevel = LogLevel.NONE):
+    global LOG_NAME
+
     val = str(msg)
 
     # For the log (uses ':')
@@ -23,7 +26,8 @@ def log(msg, level: LogLevel = LogLevel.NONE):
     result = f"{level.value} ({time_log}) {val}"
     print(result)
 
-    log_path = Path(f"logs/{time_file}.log.txt")
+    LOG_NAME = f"logs/{time_file}.log"
+    log_path = Path(f"{LOG_NAME}.txt")
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "a", encoding="utf-8") as file:
         file.write(result+"\n")

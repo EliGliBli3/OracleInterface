@@ -12,6 +12,8 @@ PROFILE_DIR = "../Oracle/auth/oracle_cookies"
 ORACLE_HOST =  "https://fa-eovh-saasfaprod1.fa.ocs.oraclecloud.com"
 ORACLE_TEST_HOST = "https://fa-eovh-test-saasfaprod1.fa.ocs.oraclecloud.com"
 
+AUTHORIZED_USER: str = ""
+
 test_environment: bool = False
 
 program_start = datetime.now()
@@ -50,13 +52,12 @@ if __name__ == '__main__':
 
     log("Starting Oracle Interface...", LogLevel.PENDING)
 
-    fscm.prompt_login(True)
+    fscm.prompt_login(test_environment=False)
     fscm.start_engine()
 
-    fscm.test_abc()
-
     log("Oracle Interface Launched!", LogLevel.SUCCESS)
-    os.system('cls')
+
+#   -  -  -  -  -
 
     cli.go_to_page(cli.get_home_page())
 

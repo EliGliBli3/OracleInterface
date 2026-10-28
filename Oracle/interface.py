@@ -1,9 +1,11 @@
 import copy
 import re
+from selectors import SelectSelector
 
 import playwright.sync_api
 from playwright.sync_api import Playwright, Page
 
+import logger
 import utils
 from Engines import oracle_engine
 from logger import *
@@ -23,29 +25,33 @@ class Engine:
         self.pw: Playwright = pw
         self.pages: list[playwright.sync_api.Page] = []
 
+
 WO = o_web.WorkOrder
+
+
 class WorkOrderInterface:
     @staticmethod
-    def get_work_order_page(work_order: WO|str, engine: Engine|None = None):
+    def get_work_order_page(work_order: WO | str, engine: Engine | None = None):
         oracle_engine.validate_api()
         if engine is None:
             engine = oracle_engine.engine
         assert engine is not None
 
-        _id: str = work_order.base_information.work_order_id if isinstance(work_order, WO) else ("WO-SAU-" + work_order.replace("WO-SAU-", ""))
+        _id: str = work_order.base_information.work_order_id if isinstance(work_order, WO) else (
+                    "WO-SAU-" + work_order.replace("WO-SAU-", ""))
 
         return nav.get_saved_page(
             _id,
             lambda: nav.goto_work_order(nav.new_tab(engine), _id)
         )
 
-
     class BaseInformation:
         @staticmethod
         def set_quantity(work_order: WO, value: int):
             p: Page = WorkOrderInterface.get_work_order_page(work_order)
             if work_order.general_information.status != WO.Status.UNRELEASED:
-                log(f"Cannot change quantity when work order is {work_order.general_information.status.value}", LogLevel.WARN)
+                log(f"Cannot change quantity when work order is {work_order.general_information.status.value}",
+                    LogLevel.WARN)
                 return
 
             p.get_by_role("link", name="General Information", exact=True).click()
@@ -59,7 +65,7 @@ class WorkOrderInterface:
         def set_status(work_order: WO, value: WO.Status):
             p: Page = WorkOrderInterface.get_work_order_page(work_order)
             log("Setting a work order's status is not yet supported."
-                     "\nWork order status should only be changed by the program if directed by a user, never automatically.",
+                "\nWork order status should only be changed by the program if directed by a user, never automatically.",
                 LogLevel.WARN)
 
         @staticmethod
@@ -71,7 +77,6 @@ class WorkOrderInterface:
             description_textbox.click()
             description_textbox.fill(value)
             work_order.general_information.description = value
-
 
         @staticmethod
         def set_priority(work_order: WO, value: int):
@@ -112,7 +117,6 @@ class WorkOrderInterface:
                     p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     log("This feature is not supported yet.", LogLevel.WARN)
 
-
                 @staticmethod
                 def set_supplier(work_order: WO, value: str):
                     p: Page = WorkOrderInterface.get_work_order_page(work_order)
@@ -124,34 +128,34 @@ class WorkOrderInterface:
                     log("This feature is not supported yet.", LogLevel.WARN)
 
                 @staticmethod
-                def set_lead_time(work_order: WO, value: float|int):
+                def set_lead_time(work_order: WO, value: float | int):
                     p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     log("This feature is not supported yet.", LogLevel.WARN)
 
             class Item:
                 @staticmethod
-                def set_is_fixed(work_order: WO, op: int, item: WO.Item|str, value: bool):
+                def set_is_fixed(work_order: WO, op: int, item: WO.Item | str, value: bool):
                     p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     log("This feature is not supported yet.", LogLevel.WARN)
 
                 @staticmethod
-                def set_quantity(work_order: WO, op: int, item: WO.Item|str, value: int):
+                def set_quantity(work_order: WO, op: int, item: WO.Item | str, value: int):
                     p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     log("This feature is not supported yet.", LogLevel.WARN)
 
             class Resource:
                 @staticmethod
-                def set_is_fixed(work_order: WO, op: int, resource: WO.Resource|str, value: bool):
+                def set_is_fixed(work_order: WO, op: int, resource: WO.Resource | str, value: bool):
                     p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     log("This feature is not supported yet.", LogLevel.WARN)
 
                 @staticmethod
-                def set_usage_rate(work_order: WO, op: int, resource: WO.Resource|str, value: float):
+                def set_usage_rate(work_order: WO, op: int, resource: WO.Resource | str, value: float):
                     p: Page = WorkOrderInterface.get_work_order_page(work_order)
                     log("This feature is not supported yet.", LogLevel.WARN)
 
             @staticmethod
-            def set_name(work_order: WO|str, op: int, value: str):
+            def set_name(work_order: WO | str, op: int, value: str):
                 p: Page = WorkOrderInterface.get_work_order_page(work_order, None)
                 log("This feature is not supported yet.", LogLevel.WARN)
 
@@ -173,7 +177,7 @@ class WorkOrderInterface:
                 log("This feature is not supported yet.", LogLevel.WARN)
 
             @staticmethod
-            def remove_item(work_order: WO, op: int, value: WO.Item|str):
+            def remove_item(work_order: WO, op: int, value: WO.Item | str):
                 p: Page = WorkOrderInterface.get_work_order_page(work_order)
                 log("This feature is not supported yet.", LogLevel.WARN)
 
@@ -187,15 +191,14 @@ class WorkOrderInterface:
                 p: Page = WorkOrderInterface.get_work_order_page(work_order)
                 log("This feature is not supported yet.", LogLevel.WARN)
 
-
         @staticmethod
         def add_operations(work_order: WO, values: list[WO.Operation]):
             p: Page = WorkOrderInterface.get_work_order_page(work_order)
             if work_order.general_information.status != WO.Status.UNRELEASED:
                 released_msg = \
                     f"Adding operations on released work orders is not yet supported." \
-                    if work_order.general_information.status == WO.Status.RELEASED else \
-                    f"Cannot add operations when work order is {work_order.general_information.status.value}."
+                        if work_order.general_information.status == WO.Status.RELEASED else \
+                        f"Cannot add operations when work order is {work_order.general_information.status.value}."
 
                 log(released_msg, LogLevel.WARN)
                 return
@@ -214,7 +217,7 @@ class WorkOrderInterface:
                     popup.get_by_role("img", name="Add", exact=True).click()
                     (playwright.sync_api.expect(
                         current_op.get_by_role("combobox", name="Work Center", exact=True))
-                        .to_have_value(""))
+                     .to_have_value(""))
 
                 if value.op != -1:
                     seq_textbox = current_op.get_by_role('textbox', name="Sequence", exact=True)
@@ -235,7 +238,7 @@ class WorkOrderInterface:
                     name_textbox.click()
                     name_textbox.fill(value.code[0])
 
-                    current_op.get_by_role("img", name="Work Center",exact=True).click()
+                    current_op.get_by_role("img", name="Work Center", exact=True).click()
                     p.get_by_role("link", name="Search...", exact=True).click()
 
                     search_popup = p.locator(".AFPopupSelector[id*='workCenter']")
@@ -268,7 +271,7 @@ class WorkOrderInterface:
                     category_combobox = attachments_popup.get_by_role("combobox", name="Category", exact=True)
                     category_combobox.select_option("Work Instruction")
 
-                    instruction_textbox = attachments_popup.get_by_role("textbox", name="File Name or URL",exact=True)
+                    instruction_textbox = attachments_popup.get_by_role("textbox", name="File Name or URL", exact=True)
                     instruction_textbox.click()
                     instruction_textbox.fill(value.work_instruction)
 
@@ -280,8 +283,7 @@ class WorkOrderInterface:
 
                 (playwright.sync_api.expect(
                     current_op.get_by_role("combobox", name="Work Center", exact=True))
-                    .to_have_value(re.compile(r".+")))
-
+                 .to_have_value(re.compile(r".+")))
 
             p.wait_for_load_state("networkidle")
             popup.get_by_role("button", name="OK", description="OK", exact=True).click()
@@ -292,8 +294,8 @@ class WorkOrderInterface:
             if work_order.general_information.status != WO.Status.UNRELEASED:
                 released_msg = \
                     f"Removing operations on released work orders is not yet supported." \
-                    if work_order.general_information.status == WO.Status.RELEASED else \
-                    f"Cannot remove operations when work order is {work_order.general_information.status.value}."
+                        if work_order.general_information.status == WO.Status.RELEASED else \
+                        f"Cannot remove operations when work order is {work_order.general_information.status.value}."
 
                 log(released_msg, LogLevel.WARN)
                 return
@@ -327,7 +329,6 @@ class WorkOrderInterface:
             p.get_by_role("img", name="Remove", exact=True).click()
             p.get_by_role("button", name="Yes", exact=True).click()
 
-
     class Lots:
         @staticmethod
         def set_lot(work_order: WO, lot: str, quantity: int):
@@ -354,6 +355,74 @@ class WorkOrderInterface:
             # Fetch lot and change quantity
             
             """
+
+
+QI = o_web.QualityIssue
+
+
+class QualityIssueInterface:
+    @staticmethod
+    def get_quality_issue_page(issue: QI | str | int, engine: Engine | None = None):
+        oracle_engine.validate_api()
+        if engine is None:
+            engine = oracle_engine.engine
+        assert engine is not None
+
+        _id: int = issue.issue_id \
+            if isinstance(issue, QI) \
+            else utils.try_or(
+            lambda: int(re.sub(
+                pattern="nc",
+                repl="",
+                string=str(issue),
+                flags=re.IGNORECASE
+            )),
+            default=-1)
+
+        return nav.get_saved_page(
+            str(f"NC{_id}"),
+            lambda: nav.goto_quality_issue(engine, f"{_id}")
+        )
+
+    @staticmethod
+    def approve_issue(issue_id: int):
+        oracle_engine.validate_api(); assert oracle_engine.engine is not None
+
+        p: Page = nav.goto_quality_issue(oracle_engine.engine, str(issue_id))
+
+        log(f"Approving NC{issue_id}", LogLevel.PENDING)
+
+        playwright.sync_api.expect(p.get_by_role("heading", name="General Information", exact=True)).to_be_visible()
+
+        status = oracle_engine.get_label(p, "Status", True)
+        if status is None:
+            err_break("NC status returned NONE.")
+
+        if status != "Approval":
+            log("Cannot approve a quality issue unless it is in approval!", LogLevel.WARN)
+            return
+
+        p.get_by_role("button", name="Approve", exact=True).click()
+        popup = p.locator('.AFPopupSelector')
+
+        disposition = p.get_by_role("combobox", name="Disposition", exact=True).get_attribute('title')
+
+        approval_message = "Miscellaneous Non-Conformance Issue Approval."
+        match disposition:
+            case "Dispose As Scrap":
+                approval_message = "Scrapped."
+            case "Rework to Specification":
+                approval_message = "Rework Paperwork Complete."
+            case "Use As Is":
+                approval_message = "UAI per Engineering"
+        approval_message += f"\n{logger.LOG_NAME}"
+
+        approval_comment_textbox = popup.get_by_role("textbox", name="Comments", exact=True)
+        approval_comment_textbox.click()
+        approval_comment_textbox.fill(approval_message)
+
+        popup.get_by_role("button", name="Approve", exact=True).click()
+
 
 def new_work_order(engine: Engine, _info: o_web.WorkOrder.BaseInformation):
     # Navigates to the manage work orders page
@@ -426,4 +495,5 @@ def new_work_order(engine: Engine, _info: o_web.WorkOrder.BaseInformation):
         popup.get_by_role("button", name="Save and Close", exact=True).click()
 
         return True
+
     return sequence()

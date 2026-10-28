@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from utils import *
+import re
 
 class Date:
     def __init__(self, _datetime: datetime):
@@ -107,3 +109,25 @@ class WorkOrder:
         self.general_information: WorkOrder.GeneralInformation = general_information
         self.operations: list[WorkOrder.Operation] = operations
         self.lots: dict[str, int]
+
+class QualityIssue:
+    class Status(Enum):
+        DRAFT = "Draft"
+        OPEN = "Open"
+        SCHEDULED = "Scheduled"
+        CANCELED = "Canceled"
+        COMPLETED = "Completed"
+        APPROVAL = "Approval"
+        INTERIM_APPROVAL = "Interim Approval"
+        DEFINITION = "Definition"
+
+    def __init__(self, issue_id: int|str):
+        self.issue_id: int = try_or(
+            lambda: int(re.sub(
+                pattern="nc",
+                repl="",
+                string=str(issue_id),
+                flags=re.IGNORECASE
+            )), default=-1) \
+            if isinstance(issue_id, str) \
+            else issue_id
