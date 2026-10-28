@@ -2,8 +2,7 @@ import os
 import sys, signal
 import traceback
 
-from Engines import oracle_engine as fscm, cli_engine as cli
-from pathlib import Path
+lazy from Engines import oracle_engine as fscm, cli_engine as cli
 
 from logger import *
 

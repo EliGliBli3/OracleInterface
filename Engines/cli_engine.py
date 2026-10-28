@@ -3,7 +3,7 @@ import sys
 from collections.abc import Callable
 
 from logger import *
-import Engines.oracle_engine as fscm
+lazy import Engines.oracle_engine as fscm
 
 class Button:
     def __init__(self, name: str, action: Callable):
@@ -11,17 +11,17 @@ class Button:
         self.action = action
 
 class Page:
-    def __init__(self, name: str, _context: []):
+    def __init__(self, name: str, _context: list):
         self.name = name
         self.context = _context
 
 class ButtonPage(Page):
-    def __init__(self, name: str, buttons: [Button], _context: []):
+    def __init__(self, name: str, buttons: list[Button], _context: list):
         super().__init__(name, _context)
         self.buttons = buttons
 
 class InputPage(Page):
-    def __init__(self, name: str, msg: str, action: Callable, _context: []):
+    def __init__(self, name: str, msg: str, action: Callable, _context: list):
         super().__init__(name, _context)
         self.msg = msg
         self.action: Callable = action
@@ -50,7 +50,7 @@ def go_to_page(page: ButtonPage | InputPage):
         try:
             _input = input(page.msg + " > ")
 
-            ctx: [] = [x for x in page.context]
+            ctx: list = [x for x in page.context]
             ctx.append(_input)
 
             page.action(ctx)
@@ -73,6 +73,10 @@ class Pages:
                 Button(
                     "Get Work Order Details",
                     lambda args: go_to_page(self.get_wo)
+                ),
+                Button(
+                    "Approve All Pending Quality Issues",
+                    lambda args: fscm.approve_all_pending_issues()
                 ),
                 Button(
                     "Exit",

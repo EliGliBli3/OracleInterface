@@ -361,28 +361,6 @@ QI = o_web.QualityIssue
 
 
 class QualityIssueInterface:
-    @staticmethod
-    def get_quality_issue_page(issue: QI | str | int, engine: Engine | None = None):
-        oracle_engine.validate_api()
-        if engine is None:
-            engine = oracle_engine.engine
-        assert engine is not None
-
-        _id: int = issue.issue_id \
-            if isinstance(issue, QI) \
-            else utils.try_or(
-            lambda: int(re.sub(
-                pattern="nc",
-                repl="",
-                string=str(issue),
-                flags=re.IGNORECASE
-            )),
-            default=-1)
-
-        return nav.get_saved_page(
-            str(f"NC{_id}"),
-            lambda: nav.goto_quality_issue(engine, f"{_id}")
-        )
 
     @staticmethod
     def approve_issue(issue_id: int):
@@ -422,6 +400,12 @@ class QualityIssueInterface:
         approval_comment_textbox.fill(approval_message)
 
         popup.get_by_role("button", name="Approve", exact=True).click()
+        #popup.get_by_role("button", name="Cancel", exact=True).click() # FOR TESTING
+
+        issue_tab = p.locator('[class*="p_AFSelected"][id*="MainAreaTab"]')
+        issue_tab.get_by_role("img", name="Close Tab", exact=True).click()
+
+        log(f"Approved NC{issue_id}! ({disposition})", LogLevel.SUCCESS)
 
 
 def new_work_order(engine: Engine, _info: o_web.WorkOrder.BaseInformation):

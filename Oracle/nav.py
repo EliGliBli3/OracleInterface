@@ -17,10 +17,11 @@ class SavedPageType(Enum):
 saved_pages: dict[str, Page] = {}
 
 def get_saved_page(_type: SavedPageType|str, navigate: Callable):
+
     str_type = _type.value if isinstance(_type, SavedPageType) else _type
 
     keys = saved_pages.keys()
-    if keys is not None and _type in keys:
+    if keys is not None and str_type in keys:
         return saved_pages.get(str_type)
 
     log(f"No tab found for {str_type}. Navigating...", LogLevel.PENDING)
@@ -131,13 +132,14 @@ def goto_quality_issue(engine: Engine, nc_num: str):
 
     try:
         page.wait_for_load_state("networkidle")
-        expect(page.get_by_role("link", name=re.compile(r"^NC"))).to_be_visible(timeout=3000) # Waits for an NC to be visible
+        expect(page.get_by_role("link", name=re.compile(r"^NC")).first).to_be_visible(timeout=30000) # Waits for an NC to be visible
         nc_link = page.get_by_role("link", name=f"NC{nc_num}", exact=True)
 
         if nc_link.count() == 0:
             nc_link = page.get_by_role("link", name=f"NC").first
 
         nc_link.click()
+        expect(page.get_by_role("link", name="Actions", exact=True)).to_be_visible(timeout=30000)
     except Exception as e:
         log(f"Could not find any NCs for input {nc_num}\n{e}", LogLevel.WARN)
 

@@ -5,7 +5,7 @@ import os
 
 import Oracle.web
 import main
-import utils
+from utils import *
 import Oracle.web as o_web
 import Oracle.interface as o_api
 import Oracle.nav as nav
@@ -64,7 +64,7 @@ def get_label(page, label_text, return_none: bool = False):
     if not result:
         result = value_cell.inner_text().strip()
 
-    return return_na() if utils.is_null_or_whitespace(result) else result
+    return return_na() if is_null_or_whitespace(result) else result
 
 def validate_api():
     if engine is None:
@@ -280,13 +280,25 @@ def fetch_issues(assignee: str = "", name: str = "", severity: int = 0, status: 
 
     return fetch_excel_columns()
 
-
 def approve_all_pending_issues():
     validate_api(); assert engine is not None
 
+    t_diffs: list[float] = []
+
     issues = fetch_issues(assignee=main.AUTHORIZED_USER, status=o_web.QualityIssue.Status.APPROVAL)
-    for issue in issues:
-        log(f"Found issue {issue}")
+    log(f"-----\nAPPROVING {len(issues)} OPEN ISSUES.\n-----\n", LogLevel.SUCCESS)
+
+    for i, issue in enumerate(issues):
+        log(f"----- ({i+1}/{len(issues)}) | ETA: {sec_to_mmss(med(t_diffs)*(len(issues)-i))} -----")
+        t_1 = datetime.now()
+
+        qi = o_web.QualityIssue(issue)
+        o_api.QualityIssueInterface.approve_issue(qi.issue_id)
+
+        t_diffs.append((datetime.now() - t_1).total_seconds())
+
+    log(f"\n-----\nSUCCESSFULLY APPROVED {len(issues)} OPEN ISSUES.\n-----", LogLevel.SUCCESS)
+
 
 
 def open_new():
