@@ -52,7 +52,7 @@ if __name__ == '__main__':
     log("Starting Oracle Interface...", LogLevel.PENDING)
 
     fscm.prompt_login(test_environment=False)
-    fscm.start_engine()
+    fscm.start_engine(headless=True)
 
     log("Oracle Interface Launched!", LogLevel.SUCCESS)
 

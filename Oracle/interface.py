@@ -414,8 +414,7 @@ class QualityIssueInterface:
             #popup.get_by_role("button", name="Cancel", exact=True).click() # FOR TESTING
             stage += 1 #5
 
-            issue_tab = p.locator('[class*="p_AFSelected"][id*="MainAreaTab"]')
-            issue_tab.get_by_role("button", name="Save and Close", exact=True).click()
+            p.get_by_role("button", name="Save and Close", exact=True).click()
             stage += 1 #6
 
             log(f"Approved NC{issue_id}! ({disposition})", LogLevel.SUCCESS)

@@ -22,6 +22,6 @@ def med(values: list[float]):
 
 def sec_to_mmss(seconds: float):
     minutes, seconds = divmod(seconds, 60)
-    return f"{int(minutes):02d}:{seconds:05.2f}"
+    return f"{int(minutes):02d}:{int(round(seconds))}"
 
 

@@ -131,7 +131,7 @@ def prompt_login(test_environment: bool):
 
         context.close()
 
-def start_engine():
+def start_engine(headless: bool):
     global engine
     log("Starting browser engine...", LogLevel.PENDING)
 
@@ -141,7 +141,7 @@ def start_engine():
     pw: Playwright = sync_playwright().start()
     log("Playwright engine started.")
 
-    browser = pw.chromium.launch(headless=False)
+    browser = pw.chromium.launch(headless=headless)
     log("Browser launched.")
 
     context = browser.new_context(
@@ -289,7 +289,7 @@ def approve_all_pending_issues():
     log(f"-----\nAPPROVING {len(issues)} OPEN ISSUES.\n-----\n", LogLevel.SUCCESS)
 
     for i, issue in enumerate(issues):
-        log(f"----- ({i+1}/{len(issues)}) | ETA: {sec_to_mmss(med(t_diffs)*(len(issues)-i))} -----")
+        log(f"----- ({i+1}/{len(issues)}) | ETA: {sec_to_mmss(avg(t_diffs)*(len(issues)-i))} -----")
         t_1 = datetime.now()
 
         qi = o_web.QualityIssue(issue)
