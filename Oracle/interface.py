@@ -366,51 +366,77 @@ class QualityIssueInterface:
     def approve_issue(issue_id: int):
         oracle_engine.validate_api(); assert oracle_engine.engine is not None
 
-        #TODO:
-        #   - EDGE CASE: ISSUE APPROVED BUT STUCK IN APPROVAL
-        #   - "SAVE AND CLOSE" INSTEAD OF CLOSING TAB
-        #   - HOLD ISSUES THAT HAVE INDETERMINATE DATA
+        stage: int = 0
+        try:
+            p: Page = nav.goto_quality_issue(oracle_engine.engine, str(issue_id))
+            stage+=1 #1
 
-        p: Page = nav.goto_quality_issue(oracle_engine.engine, str(issue_id))
+            log(f"Approving NC{issue_id}", LogLevel.PENDING)
 
-        log(f"Approving NC{issue_id}", LogLevel.PENDING)
+            playwright.sync_api.expect(p.get_by_role("heading", name="General Information", exact=True)).to_be_visible()
+            stage += 1 #2
 
-        playwright.sync_api.expect(p.get_by_role("heading", name="General Information", exact=True)).to_be_visible()
+            status = oracle_engine.get_label(p, "Status", True)
+            if status is None:
+                err_break("NC status returned NONE.")
 
-        status = oracle_engine.get_label(p, "Status", True)
-        if status is None:
-            err_break("NC status returned NONE.")
+            if status != "Approval":
+                log("Cannot approve a quality issue unless it is in approval!", LogLevel.WARN)
+                return
 
-        if status != "Approval":
-            log("Cannot approve a quality issue unless it is in approval!", LogLevel.WARN)
-            return
+            approve_button = p.get_by_role("button", name="Approve", exact=True)
+            if approve_button.count() == 0:
+                log(f"NC{issue_id} is in a bad state (This is a known Oracle bug).\nNC will have to be closed manually.")
+                return
 
-        p.get_by_role("button", name="Approve", exact=True).click()
-        popup = p.locator('.AFPopupSelector')
+            approve_button.click()
+            popup = p.locator('.AFPopupSelector')
+            stage += 1 #3
 
-        disposition = p.get_by_role("combobox", name="Disposition", exact=True).get_attribute('title')
+            disposition = p.get_by_role("combobox", name="Disposition", exact=True).get_attribute('title')
 
-        approval_message = "Miscellaneous Non-Conformance Issue Approval."
-        match disposition:
-            case "Dispose As Scrap":
-                approval_message = "Scrapped."
-            case "Rework to Specification":
-                approval_message = "Rework Paperwork Complete."
-            case "Use As Is":
-                approval_message = "UAI per Engineering"
-        approval_message += f"\n{logger.LOG_NAME}"
+            approval_message = "Miscellaneous Non-Conformance Issue Approval."
+            match disposition:
+                case "Dispose As Scrap":
+                    approval_message = "Scrapped."
+                case "Rework to Specification":
+                    approval_message = "Rework Paperwork Complete."
+                case "Use As Is":
+                    approval_message = "UAI per Engineering"
+            approval_message += f"\n{logger.LOG_NAME}"
 
-        approval_comment_textbox = popup.get_by_role("textbox", name="Comments", exact=True)
-        approval_comment_textbox.click()
-        approval_comment_textbox.fill(approval_message)
+            approval_comment_textbox = popup.get_by_role("textbox", name="Comments", exact=True)
+            approval_comment_textbox.click()
+            approval_comment_textbox.fill(approval_message)
+            stage += 1 #4
 
-        popup.get_by_role("button", name="Approve", exact=True).click()
-        #popup.get_by_role("button", name="Cancel", exact=True).click() # FOR TESTING
+            popup.get_by_role("button", name="Approve", exact=True).click()
+            #popup.get_by_role("button", name="Cancel", exact=True).click() # FOR TESTING
+            stage += 1 #5
 
-        issue_tab = p.locator('[class*="p_AFSelected"][id*="MainAreaTab"]')
-        issue_tab.get_by_role("img", name="Close Tab", exact=True).click()
+            issue_tab = p.locator('[class*="p_AFSelected"][id*="MainAreaTab"]')
+            issue_tab.get_by_role("button", name="Save and Close", exact=True).click()
+            stage += 1 #6
 
-        log(f"Approved NC{issue_id}! ({disposition})", LogLevel.SUCCESS)
+            log(f"Approved NC{issue_id}! ({disposition})", LogLevel.SUCCESS)
+        except Exception as e:
+            match stage:
+                case 0:
+                    stage_msg = "Navigate to quality issue"
+                case 1:
+                    stage_msg = "NC Load"
+                case 2:
+                    stage_msg = "Enter approval popup"
+                case 3:
+                    stage_msg = "Enter approval comment"
+                case 4:
+                    stage_msg = "Confirm approval"
+                case 5:
+                    stage_msg = "Close quality issue"
+                case _:
+                    stage_msg = "N/A"
+
+            log(f"Failed to approve NC{issue_id}. Skipping\n\tStage: {stage_msg}\n\tException: {e}", LogLevel.WARN)
 
 
 def new_work_order(engine: Engine, _info: o_web.WorkOrder.BaseInformation):
