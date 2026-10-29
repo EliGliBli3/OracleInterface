@@ -5,3 +5,6 @@
 /workspace.xml
 /logs/
 /temp/
+/build/
+/dist/
+/main.spec

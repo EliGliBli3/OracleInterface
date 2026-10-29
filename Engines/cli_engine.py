@@ -94,8 +94,12 @@ class Pages:
         )
 
     def page_get_wo_action(_input: str):
+        log("This feature is currently under development. Sorry!")
+        return
+
         log(f"Fetching WO-SAU-{_input[0]}")
         wo: fscm.WorkOrder = fscm.get_work_order(_input[0])
+
         log(f"Found WO-SAU-{_input[0]} ({wo.status})")
         go_to_page(InputPage(
             name=f"WO-SAU-{_input[0]}",

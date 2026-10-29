@@ -94,7 +94,7 @@ def prompt_login(test_environment: bool):
             okta_button.click()
 
         def capture_username(username):
-            main.AUTHORIZED_USER = username + "@ichorsystems.com"
+            main.AUTHORIZED_USER = str(username).replace("@ichorsystems.com", "") + "@ichorsystems.com"
             log("Logging in as " + main.AUTHORIZED_USER)
 
         page.expose_function("captureUsername", capture_username)
@@ -293,6 +293,8 @@ def approve_all_pending_issues():
         t_diffs.append((datetime.now() - t_1).total_seconds())
 
     log(f"\n-----\nSUCCESSFULLY APPROVED {len(issues)} OPEN ISSUES.\n-----", LogLevel.SUCCESS)
+
+    input("Press any key to return to the home screen...")
 
 
 
