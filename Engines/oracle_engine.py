@@ -1,19 +1,14 @@
 import playwright
 from playwright.sync_api import sync_playwright, Playwright, Page
 
-import os
-
-import Oracle.web
-import main
 from utils import *
 import Oracle.web as o_web
 import Oracle.interface as o_api
 import Oracle.nav as nav
-from Oracle import interface
 from Oracle.interface import new_work_order
 from Oracle.web import WorkOrder
 
-import xlrd as xl
+import lxml # For pipreqs
 import pandas as pd
 
 from main import PROFILE_DIR, AUTH_STATE, ORACLE_HOST, ORACLE_TEST_HOST
