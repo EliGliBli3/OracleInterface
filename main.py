@@ -120,5 +120,6 @@ if __name__ == '__main__':
 #   -  -  -  -  -
 
     while alive:
+        input("Press any key to return to the home screen...")
         cli.go_to_page(cli.get_home_page())
 

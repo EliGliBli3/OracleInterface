@@ -70,7 +70,7 @@ def validate_api():
         log("Revalidating main page...", LogLevel.PENDING)
         engine.pages.append(engine.context.new_page())
 
-
+#region Initialization / Deinitialization
 def prompt_login(test_environment: bool):
     login_url = f"{ORACLE_HOST}/fscmUI/faces/FuseWelcome"
     if test_environment:
@@ -153,6 +153,18 @@ def dispose():
         engine.context.close()
         engine.browser.close()
         engine.pw.stop()
+#endregion
+
+
+#TODO:
+#   - **Session warmer**
+#   - **Workers**
+#   - Fetch NCs between dates (default to Monday -> Now)
+#   - Close rework NCs
+#   - Assign NCs
+#   - Close scrap NCs
+
+#Region Oracle Getters
 
 def get_work_order(wo_id: str):
     validate_api(); assert engine is not None
@@ -211,24 +223,7 @@ def get_quality_issue(nc_num: str):
 
     nav.goto_quality_issue(engine, nc_num)
 
-def create_work_order(work_order: WorkOrder|None):
-    validate_api(); assert engine is not None
-
-    """
-    1. Create Work Order (manage work orders)
-    2. Go to Work Order separately
-    3. Fill in details as necessary
-    4. DO NOT RELEASE (Await user confirmation)
-    """
-
-    new_work_order(engine, WorkOrder.BaseInformation(
-        _id="102022-1A",
-        _quantity=5,
-        _part="03-15-2007",
-        _type=WorkOrder.Type.REWORK
-    ))
-
-def fetch_issues(assignee: str = "", name: str = "", severity: int = 0, status: o_web.QualityIssue.Status|None = None):
+def get_quality_issues(assignee: str = "", name: str = "", severity: int = 0, status: o_web.QualityIssue.Status | None = None):
     validate_api(); assert engine is not None
     p: Page = nav.goto_quality_issues(engine)
 
@@ -275,13 +270,32 @@ def fetch_issues(assignee: str = "", name: str = "", severity: int = 0, status: 
 
     return fetch_excel_columns()
 
+#endregion
+
+def create_work_order(work_order: WorkOrder|None):
+    validate_api(); assert engine is not None
+
+    """
+    1. Create Work Order (manage work orders)
+    2. Go to Work Order separately
+    3. Fill in details as necessary
+    4. DO NOT RELEASE (Await user confirmation)
+    """
+
+    new_work_order(engine, WorkOrder.BaseInformation(
+        _id="102022-1A",
+        _quantity=5,
+        _part="03-15-2007",
+        _type=WorkOrder.Type.REWORK
+    ))
+
 def approve_all_pending_issues():
     validate_api(); assert engine is not None
 
     t_diffs: list[float] = []
 
-    issues = fetch_issues(assignee=main.AUTHORIZED_USER, status=o_web.QualityIssue.Status.APPROVAL)
-    log(f"-----\nAPPROVING {len(issues)} OPEN ISSUES.\n-----\n", LogLevel.SUCCESS)
+    issues = get_quality_issues(assignee=main.AUTHORIZED_USER, status=o_web.QualityIssue.Status.APPROVAL)
+    log(f"\n-----\nAPPROVING {len(issues)} OPEN ISSUES.\n-----\n", LogLevel.SUCCESS)
 
     for i, issue in enumerate(issues):
         log(f"----- ({i+1}/{len(issues)}) | ETA: {sec_to_mmss(avg(t_diffs)*(len(issues)-i))} -----")
@@ -293,9 +307,6 @@ def approve_all_pending_issues():
         t_diffs.append((datetime.now() - t_1).total_seconds())
 
     log(f"\n-----\nSUCCESSFULLY APPROVED {len(issues)} OPEN ISSUES.\n-----", LogLevel.SUCCESS)
-
-    input("Press any key to return to the home screen...")
-
 
 
 def open_new():
