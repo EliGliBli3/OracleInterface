@@ -121,10 +121,11 @@ if __name__ == '__main__':
     fscm.start_engine(headless=True)
 
     log("Oracle Interface Launched!", LogLevel.SUCCESS)
+    os.system('cls')
 
 #   -  -  -  -  -
 
     while alive:
-        input("Press any key to return to the home screen...")
+        input(f"\n{"="*50}Press any key to return to the home screen...")
         cli.go_to_page(cli.get_home_page())
 
