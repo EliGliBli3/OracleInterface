@@ -12,7 +12,7 @@ from pathlib import Path
 import requests
 import sys
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 FROZEN = getattr(sys, "frozen", False)
 
 GITHUB_OWNER = "EliGliBli3"
