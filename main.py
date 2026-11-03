@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 from logger import *
+from update_handler import APP_VERSION, check_for_updates
 
 FROZEN = getattr(sys, "frozen", False)
 
@@ -100,6 +101,10 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
     sys.excepthook = handle_exception
+
+    log(f"CURRENT VERSION: {APP_VERSION}")
+    if check_for_updates():
+        sys.exit(0)
 
     if not are_browsers_installed():
         try:

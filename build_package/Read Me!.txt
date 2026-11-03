@@ -1,0 +1,16 @@
+## Welcome!
+
+\-----
+
+
+This program is in a **very early** state, and may have bugs or issues. If you have problems, send the most recent 'log' file to me at edebettignies@ichorsystems.com
+
+
+If you wish to move the exe file somewhere else (such as your desktop or a different folder):
+
+Ensure the folder is where you want it
+Run "genShortcuts.exe"
+Move 'logs' and/or 'Oracle Interface' ONLY
+If 'main' or 'genShortcuts' are moved, they will stop working
+If you move the folder at any point, delete the shortcuts and repeat these steps
+

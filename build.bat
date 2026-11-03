@@ -1,4 +1,4 @@
-call ./.venv/Scripts/activate
-pip install -r ./requirements.txt
-pyinstaller --onedir --collect-all playwright main.py -y
+if not exist .venv python -m venv .venv
+call .venv\Scripts\activate
+python build_release.py
 pause
